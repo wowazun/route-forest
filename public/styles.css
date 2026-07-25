@@ -861,11 +861,15 @@ h2 {
   outline-offset: 4px;
 }
 
-.controller-orbit {
-  position: absolute;
-  inset: 19%;
-  border: 1px dashed rgba(184, 222, 213, 0.18);
-  border-radius: 50%;
+.controller-pad-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.controller-pad-rim {
+  stroke: var(--participant-color);
 }
 
 .controller-knob {

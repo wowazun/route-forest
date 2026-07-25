@@ -12,10 +12,14 @@ test("connects the mobile controller and display through owned server events", a
   ]);
 
   assert.match(page, /id="controller-pad"/);
+  assert.match(page, /class="controller-pad-face"/);
+  assert.match(page, /styles\.css\?v=3/);
+  assert.match(page, /app\.js\?v=3/);
   assert.match(page, /id="controller-color-swatch"/);
   assert.match(page, /id="route-highlight-button"/);
   assert.match(app, /authorization: `Bearer/);
   assert.match(app, /--participant-color/);
+  assert.match(app, /ensureControllerPadGeometry/);
   assert.match(app, /setInterval\(\(\) => \{\s*sendControllerInput/);
   assert.match(app, /"touchstart"/);
   assert.match(app, /"touchmove"/);

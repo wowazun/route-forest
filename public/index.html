@@ -9,7 +9,7 @@
       content="情報通信路を観測し、匿名化された経路として体験するインタラクティブ作品。"
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=3" />
     <title>情報通信路 — Route Forest</title>
   </head>
   <body>
@@ -226,7 +226,41 @@
               aria-describedby="controller-help"
               aria-disabled="true"
             >
-              <span class="controller-orbit" aria-hidden="true"></span>
+              <svg
+                class="controller-pad-face"
+                width="240"
+                height="240"
+                viewBox="0 0 240 240"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <circle
+                  class="controller-pad-rim"
+                  cx="120"
+                  cy="120"
+                  r="116"
+                  fill="#12333b"
+                  fill-opacity="0.72"
+                  stroke="#d5a24b"
+                  stroke-opacity="0.78"
+                  stroke-width="2"
+                />
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="73"
+                  fill="none"
+                  stroke="#b8ded5"
+                  stroke-opacity="0.2"
+                  stroke-dasharray="4 7"
+                />
+                <path
+                  d="M120 20V220M20 120H220"
+                  fill="none"
+                  stroke="#b8ded5"
+                  stroke-opacity="0.15"
+                />
+              </svg>
               <span id="controller-knob" class="controller-knob" aria-hidden="true">
                 <i></i>
               </span>
@@ -290,6 +324,6 @@
         この体験にはJavaScriptが必要です。ブラウザの設定を確認してください。
       </p>
     </noscript>
-    <script type="module" src="/app.js"></script>
+    <script type="module" src="/app.js?v=3"></script>
   </body>
 </html>

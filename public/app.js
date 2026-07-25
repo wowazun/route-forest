@@ -141,6 +141,14 @@ function setControllerConnection(mode, label) {
   controllerConnectionLabel.textContent = label;
 }
 
+function ensureControllerPadGeometry() {
+  const viewportWidth =
+    document.documentElement.clientWidth || window.innerWidth || 320;
+  const size = Math.max(190, Math.min(248, viewportWidth - 76));
+  controllerPad.style.width = `${size}px`;
+  controllerPad.style.height = `${size}px`;
+}
+
 function setControllerVector(vector, { send = false, force = false } = {}) {
   const rawX = Number(vector?.x) || 0;
   const rawY = Number(vector?.y) || 0;
@@ -663,6 +671,8 @@ window.addEventListener("blur", () => {
     releaseControllerPointer(controllerPointer);
   }
 });
+window.addEventListener("resize", ensureControllerPadGeometry);
+window.addEventListener("orientationchange", ensureControllerPadGeometry);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && controllerPointer !== null) {
     releaseControllerPointer(controllerPointer);
@@ -731,3 +741,4 @@ async function restoreControllerSession() {
 }
 
 restoreControllerSession();
+ensureControllerPadGeometry();
