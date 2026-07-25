@@ -374,12 +374,14 @@ function releasePlane(letter, now) {
         seed: letter.controller.color,
       }
     : palette;
+  const initialVx = 24 + (hashText(letter.flightId) % 25);
+  const initialVy = -8;
   state.planes.push({
     flightId: letter.flightId,
     x: letter.x + pose.xOffset,
     y: letter.y + pose.yOffset,
-    vx: 24 + (hashText(letter.flightId) % 25),
-    vy: -8,
+    vx: initialVx,
+    vy: initialVy,
     bornAt: now,
     controllableAt:
       now + (prefersReducedMotion ? 0 : visualStyle.motion.planeControlDelayMs),
@@ -390,7 +392,7 @@ function releasePlane(letter, now) {
         ? 20_000
         : visualStyle.motion.planeFlightMs,
     phase: (hashText(letter.flightId) % 100) / 20,
-    heading: 0,
+    heading: Math.atan2(initialVy, initialVx),
     wind: { x: 0, y: 0 },
     controller: letter.controller,
     palette: participantPalette,

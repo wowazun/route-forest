@@ -6,6 +6,7 @@ import {
   birdWorldAnchor,
   drawBirdArt,
   smoothBirdHeading,
+  uprightBirdPose,
 } from "../public/bird-art.js";
 
 function recordingContext() {
@@ -56,6 +57,34 @@ test("keeps release anchors below or behind the body", () => {
   assert.ok(seed.y > 20);
   assert.ok(letter.y > 20);
   assert.ok(letter.x < 10);
+});
+
+test("keeps left-facing birds upright instead of rotating them upside down", () => {
+  const pose = uprightBirdPose(Math.PI);
+  assert.equal(pose.facing, -1);
+  assert.ok(Math.abs(pose.angle) < 0.0001);
+
+  const context = recordingContext();
+  const result = drawBirdArt(context, {
+    angle: Math.PI,
+    flap: 0,
+  });
+  assert.equal(result.facing, -1);
+  assert.ok(
+    context.operations.some(
+      ([name, xScale, yScale]) =>
+        name === "scale" && xScale < 0 && yScale > 0,
+    ),
+  );
+
+  const letter = birdWorldAnchor({
+    x: 10,
+    y: 20,
+    angle: Math.PI,
+    name: "letter",
+  });
+  assert.ok(letter.y > 20);
+  assert.ok(letter.x > 10);
 });
 
 test("smooths heading across the shortest angular distance", () => {

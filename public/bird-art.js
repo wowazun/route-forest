@@ -27,6 +27,29 @@ function shortestAngleDelta(from, to) {
   return Math.atan2(Math.sin(to - from), Math.cos(to - from));
 }
 
+export function uprightBirdPose(angle, maximumPitch = Math.PI * 0.32) {
+  const normalized = Math.atan2(
+    Math.sin(Number(angle) || 0),
+    Math.cos(Number(angle) || 0),
+  );
+  const facing = Math.cos(normalized) < 0 ? -1 : 1;
+  const relative =
+    facing === 1
+      ? normalized
+      : normalized > 0
+        ? normalized - Math.PI
+        : normalized + Math.PI;
+  const pitchLimit = clamp(
+    Number(maximumPitch) || 0,
+    0,
+    Math.PI / 2,
+  );
+  return Object.freeze({
+    angle: clamp(relative, -pitchLimit, pitchLimit),
+    facing,
+  });
+}
+
 export function smoothBirdHeading(
   current,
   target,
@@ -56,11 +79,13 @@ export function birdWorldAnchor({
   name = "body",
 }) {
   const anchor = birdLocalAnchor(name);
-  const cosine = Math.cos(angle);
-  const sine = Math.sin(angle);
+  const pose = uprightBirdPose(angle);
+  const localX = anchor.x * pose.facing;
+  const cosine = Math.cos(pose.angle);
+  const sine = Math.sin(pose.angle);
   return Object.freeze({
-    x: x + (anchor.x * cosine - anchor.y * sine) * scale,
-    y: y + (anchor.x * sine + anchor.y * cosine) * scale,
+    x: x + (localX * cosine - anchor.y * sine) * scale,
+    y: y + (localX * sine + anchor.y * cosine) * scale,
   });
 }
 
@@ -435,11 +460,12 @@ export function drawBirdArt(
     ? silhouette
     : "swallow";
   const bodyAlpha = clamp(alpha) * (1 - resolvedFog * 0.83);
+  const pose = uprightBirdPose(angle);
 
   context.save();
   context.translate(x, y);
-  context.rotate(angle);
-  context.scale(scale, scale);
+  context.rotate(pose.angle);
+  context.scale(scale * pose.facing, scale);
 
   drawTrail(context, clamp(glow), resolvedFog, palette);
   drawSoftGlow(
@@ -478,6 +504,8 @@ export function drawBirdArt(
   return Object.freeze({
     flap: resolvedFlap,
     fogAmount: resolvedFog,
+    facing: pose.facing,
+    angle: pose.angle,
     bodyAlpha,
     silhouette: resolvedSilhouette,
   });
