@@ -236,6 +236,37 @@ export function drawPaperPlane(context, options) {
   return drawPaperPlaneArt(context, options);
 }
 
+export function drawPlaneWind(
+  context,
+  { x, y, wind, alpha = 0.16, scale = 1 },
+) {
+  const magnitude = Math.hypot(wind?.x || 0, wind?.y || 0);
+  if (magnitude < 0.03) return;
+  const directionX = wind.x / magnitude;
+  const directionY = wind.y / magnitude;
+  const normalX = -directionY;
+  const normalY = directionX;
+  context.save();
+  context.lineCap = "round";
+  context.lineWidth = 0.9;
+  context.strokeStyle = `rgba(116, 169, 165, ${Math.min(0.24, alpha)})`;
+  for (let index = -1; index <= 1; index += 1) {
+    const offset = index * 8 * scale;
+    const startX = x - directionX * 22 * scale + normalX * offset;
+    const startY = y - directionY * 22 * scale + normalY * offset;
+    context.beginPath();
+    context.moveTo(startX, startY);
+    context.quadraticCurveTo(
+      x - directionX * 8 * scale + normalX * offset * 0.8,
+      y - directionY * 8 * scale + normalY * offset * 0.8,
+      x + directionX * 7 * scale + normalX * offset * 0.55,
+      y + directionY * 7 * scale + normalY * offset * 0.55,
+    );
+    context.stroke();
+  }
+  context.restore();
+}
+
 export function drawRoutePath(
   context,
   { segments, routeId, bird, now },

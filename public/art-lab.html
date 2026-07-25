@@ -59,6 +59,9 @@
           <button type="button" data-mode="message-lab">
             MESSAGE LAB
           </button>
+          <button type="button" data-mode="plane-wind-lab">
+            PLANE + WIND
+          </button>
         </fieldset>
         <label>
           <span>TREE AGE <output id="tree-age-output">72</output></span>
@@ -254,6 +257,92 @@
         <button id="message-replay" class="message-replay" type="button">
           REPLAY SEQUENCE
         </button>
+      </section>
+
+      <section id="wind-controls" class="wind-controls" aria-label="紙飛行機の操作と風の確認">
+        <label class="wind-preset">
+          <span>WIND PRESET</span>
+          <select id="wind-preset">
+            <option value="control-only">01 USER CONTROL ONLY</option>
+            <option value="wind-only">02 WIND ONLY</option>
+            <option value="combined">03 CONTROL + WIND</option>
+            <option value="inertia">04 INERTIA ONLY</option>
+            <option value="no-trees">05 NO TREES</option>
+            <option value="small-tree">06 SMALL TREE</option>
+            <option value="large-tree">07 LARGE TREE</option>
+            <option value="multiple-trees">08 MULTIPLE TREES</option>
+            <option value="strong-vortex">09 STRONG VORTEX</option>
+            <option value="weak-wind">10 WEAK WIND</option>
+            <option value="joystick">11 VIRTUAL JOYSTICK</option>
+            <option value="release-to-wind">12 RELEASE TO WIND</option>
+          </select>
+        </label>
+        <div
+          id="wind-control-pad"
+          class="wind-control-pad"
+          role="application"
+          tabindex="0"
+          aria-label="Art Lab紙飛行機操作パッド"
+        >
+          <span id="wind-control-knob"></span>
+        </div>
+        <label>
+          <span>INPUT X <output id="wind-input-x-output">45%</output></span>
+          <input id="wind-input-x" type="range" min="-100" max="100" value="45" />
+        </label>
+        <label>
+          <span>INPUT Y <output id="wind-input-y-output">-15%</output></span>
+          <input id="wind-input-y" type="range" min="-100" max="100" value="-15" />
+        </label>
+        <label>
+          <span>WIND STRENGTH <output id="wind-strength-output">26</output></span>
+          <input id="wind-strength" type="range" min="0" max="90" value="26" />
+        </label>
+        <label>
+          <span>CONTROL FORCE <output id="wind-control-output">80</output></span>
+          <input id="wind-control" type="range" min="0" max="160" value="80" />
+        </label>
+        <label>
+          <span>DRAG <output id="wind-drag-output">1.15</output></span>
+          <input id="wind-drag" type="range" min="0" max="300" value="115" />
+        </label>
+        <label>
+          <span>MAX SPEED <output id="wind-max-speed-output">230</output></span>
+          <input id="wind-max-speed" type="range" min="60" max="360" value="230" />
+        </label>
+        <label>
+          <span>NOISE SCALE <output id="wind-scale-output">0.0036</output></span>
+          <input id="wind-scale" type="range" min="10" max="90" value="36" />
+        </label>
+        <label>
+          <span>TIME SPEED <output id="wind-time-output">1.00</output></span>
+          <input id="wind-time" type="range" min="0" max="300" value="100" />
+        </label>
+        <label>
+          <span>TREE INFLUENCE <output id="wind-tree-output">0.34</output></span>
+          <input id="wind-tree" type="range" min="0" max="120" value="34" />
+        </label>
+        <label>
+          <span>TREE RADIUS <output id="wind-radius-output">92</output></span>
+          <input id="wind-radius" type="range" min="40" max="220" value="92" />
+        </label>
+        <label>
+          <span>SEED <output id="wind-seed-output">411</output></span>
+          <input id="wind-seed" type="range" min="1" max="999" value="411" />
+        </label>
+        <label class="wind-switch">
+          <span>WIND</span>
+          <input id="wind-enabled" type="checkbox" checked />
+        </label>
+        <label class="wind-switch">
+          <span>TRAIL</span>
+          <input id="wind-trail" type="checkbox" checked />
+        </label>
+        <label class="wind-switch">
+          <span>VECTORS</span>
+          <input id="wind-vectors" type="checkbox" checked />
+        </label>
+        <button id="wind-reset" class="message-replay" type="button">RESET PLANE</button>
       </section>
 
       <section id="proofs" class="proofs" aria-label="鳥と木の造形比較"></section>

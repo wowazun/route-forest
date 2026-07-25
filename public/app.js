@@ -28,8 +28,32 @@ const errorMessage = document.querySelector("#error-message");
 const errorGuidance = document.querySelector("#error-guidance");
 const returnButton = document.querySelector("#return-button");
 const errorReturnButton = document.querySelector("#error-return-button");
+const controllerPanel = document.querySelector("#controller-panel");
+const controllerConnection = document.querySelector("#controller-connection");
+const controllerConnectionLabel = document.querySelector(
+  "#controller-connection-label",
+);
+const controllerState = document.querySelector("#controller-state");
+const controllerPad = document.querySelector("#controller-pad");
+const controllerKnob = document.querySelector("#controller-knob");
+const controllerX = document.querySelector("#controller-x");
+const controllerY = document.querySelector("#controller-y");
+const controllerEnded = document.querySelector("#controller-ended");
+const routeHighlightButton = document.querySelector(
+  "#route-highlight-button",
+);
 
 let elapsedTimer = null;
+let controllerCredentials = null;
+let controllerStatusTimer = null;
+let controllerInputTimer = null;
+let controllerPointer = null;
+let controllerVector = { x: 0, y: 0 };
+let controllerSequence = 0;
+let controllerCanControl = false;
+let controllerRouteReady = false;
+let lastControllerSendAt = 0;
+const CONTROLLER_STORAGE_KEY = "route-forest-controller-v1";
 
 function setPanel(name) {
   for (const [panelName, panel] of Object.entries(panels)) {
@@ -39,6 +63,7 @@ function setPanel(name) {
 }
 
 function resetExperience() {
+  endControllerSession();
   clearInterval(elapsedTimer);
   elapsedTimer = null;
   consentCheckbox.checked = false;
@@ -46,6 +71,7 @@ function resetExperience() {
   startButton.disabled = false;
   formMessage.textContent = "";
   routeMap.replaceChildren();
+  controllerPanel.hidden = true;
   setPanel("intro");
 }
 
@@ -73,6 +99,190 @@ async function readResponse(response) {
     throw error;
   }
   return body;
+}
+
+function controllerHeaders() {
+  return {
+    authorization: `Bearer ${controllerCredentials?.token || ""}`,
+  };
+}
+
+function storeControllerCredentials(measurementId, controller) {
+  if (!controller?.sessionId || !controller?.token) return;
+  controllerCredentials = {
+    measurementId,
+    sessionId: controller.sessionId,
+    token: controller.token,
+    expiresAt: controller.expiresAt,
+  };
+  sessionStorage.setItem(
+    CONTROLLER_STORAGE_KEY,
+    JSON.stringify(controllerCredentials),
+  );
+}
+
+function setControllerConnection(mode, label) {
+  controllerConnection.className = "controller-connection";
+  if (mode) controllerConnection.classList.add(mode);
+  controllerConnectionLabel.textContent = label;
+}
+
+function setControllerVector(vector, { send = false, force = false } = {}) {
+  const rawX = Number(vector?.x) || 0;
+  const rawY = Number(vector?.y) || 0;
+  const magnitude = Math.hypot(rawX, rawY);
+  const scale = magnitude > 1 ? 1 / magnitude : 1;
+  controllerVector = {
+    x: Math.max(-1, Math.min(1, rawX * scale)),
+    y: Math.max(-1, Math.min(1, rawY * scale)),
+  };
+  const travel = controllerPad.clientWidth * 0.29;
+  controllerKnob.style.transform = `translate(calc(-50% + ${
+    controllerVector.x * travel
+  }px), calc(-50% + ${controllerVector.y * travel}px))`;
+  controllerX.textContent = controllerVector.x.toFixed(2);
+  controllerY.textContent = controllerVector.y.toFixed(2);
+  if (send) sendControllerInput({ force });
+}
+
+async function sendControllerInput({ force = false } = {}) {
+  if (!controllerCredentials || !controllerCanControl) return;
+  const now = Date.now();
+  if (!force && now - lastControllerSendAt < 80) return;
+  lastControllerSendAt = now;
+  controllerSequence += 1;
+  try {
+    const response = await fetch(
+      `/api/controller/sessions/${controllerCredentials.sessionId}/input`,
+      {
+        method: "POST",
+        headers: {
+          ...controllerHeaders(),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          x: controllerVector.x,
+          y: controllerVector.y,
+          sequence: controllerSequence,
+          inputAt: now,
+        }),
+        keepalive: force,
+      },
+    );
+    if (response.status === 401 || response.status === 409) {
+      await updateControllerStatus();
+    }
+  } catch {
+    setControllerConnection("is-reconnecting", "再接続中");
+  }
+}
+
+function setControllerFromPointer(clientX, clientY) {
+  const rect = controllerPad.getBoundingClientRect();
+  const radius = rect.width * 0.36;
+  setControllerVector(
+    {
+      x: (clientX - (rect.left + rect.width / 2)) / radius,
+      y: (clientY - (rect.top + rect.height / 2)) / radius,
+    },
+    { send: true },
+  );
+}
+
+function releaseControllerPointer(pointerId) {
+  if (controllerPointer !== pointerId) return;
+  controllerPointer = null;
+  controllerPad.classList.remove("is-active");
+  clearInterval(controllerInputTimer);
+  controllerInputTimer = null;
+  setControllerVector({ x: 0, y: 0 }, { send: true, force: true });
+}
+
+const CONTROLLER_PHASE_COPY = Object.freeze({
+  connecting: "接続中",
+  measuring: "経路を観測中",
+  carrying: "鳥が情報を運んでいます",
+  opening: "手紙を開いています",
+  preparing: "紙飛行機を準備しています",
+  controllable: "操作できます",
+  ended: "セッションが終了しました",
+});
+
+function applyControllerStatus(status) {
+  const phase = status?.phase || "connecting";
+  controllerCanControl = status?.controllable === true;
+  controllerRouteReady = status?.routeReady === true;
+  controllerState.textContent =
+    CONTROLLER_PHASE_COPY[phase] || CONTROLLER_PHASE_COPY.connecting;
+  controllerPad.setAttribute(
+    "aria-disabled",
+    String(!controllerCanControl),
+  );
+  routeHighlightButton.disabled = !controllerRouteReady;
+  controllerEnded.hidden = phase !== "ended";
+  if (phase === "ended") {
+    setControllerConnection("is-ended", "終了");
+    setControllerVector({ x: 0, y: 0 });
+  } else {
+    setControllerConnection("is-live", "接続済み");
+  }
+}
+
+async function updateControllerStatus() {
+  if (!controllerCredentials) return;
+  try {
+    const response = await fetch(
+      `/api/controller/sessions/${controllerCredentials.sessionId}`,
+      {
+        cache: "no-store",
+        headers: controllerHeaders(),
+      },
+    );
+    if (response.status === 401 || response.status === 404) {
+      applyControllerStatus({ phase: "ended" });
+      clearInterval(controllerStatusTimer);
+      controllerStatusTimer = null;
+      return;
+    }
+    applyControllerStatus(await readResponse(response));
+  } catch {
+    setControllerConnection("is-reconnecting", "再接続中");
+    controllerState.textContent = "接続を確かめています";
+  }
+}
+
+function startControllerSession() {
+  if (!controllerCredentials) return;
+  controllerPanel.hidden = false;
+  applyControllerStatus({
+    phase: "connecting",
+    controllable: false,
+    routeReady: false,
+  });
+  clearInterval(controllerStatusTimer);
+  updateControllerStatus();
+  controllerStatusTimer = setInterval(updateControllerStatus, 750);
+}
+
+function endControllerSession() {
+  clearInterval(controllerStatusTimer);
+  clearInterval(controllerInputTimer);
+  controllerStatusTimer = null;
+  controllerInputTimer = null;
+  if (controllerCredentials) {
+    setControllerVector({ x: 0, y: 0 });
+    fetch(
+      `/api/controller/sessions/${controllerCredentials.sessionId}/end`,
+      {
+        method: "POST",
+        headers: controllerHeaders(),
+        keepalive: true,
+      },
+    ).catch(() => {});
+  }
+  controllerCredentials = null;
+  controllerCanControl = false;
+  sessionStorage.removeItem(CONTROLLER_STORAGE_KEY);
 }
 
 async function requestMeasurement(website) {
@@ -210,9 +420,11 @@ function renderResult(record) {
     ...observation.steps.map((step) => routeStepNode(step)),
   );
   setPanel("result");
+  startControllerSession();
 }
 
 function showError(error) {
+  endControllerSession();
   clearInterval(elapsedTimer);
   elapsedTimer = null;
 
@@ -321,6 +533,7 @@ consentForm.addEventListener("submit", async (event) => {
 
   try {
     const queued = await requestMeasurement(website);
+    storeControllerCredentials(queued.measurementId, queued.controller);
     const record = await waitForMeasurement(queued.measurementId);
     if (record.status === "completed") {
       renderResult(record);
@@ -342,5 +555,97 @@ websiteInput.addEventListener("input", () => {
   if (websiteInput.value.trim()) formMessage.textContent = "";
 });
 
+controllerPad.addEventListener("pointerdown", (event) => {
+  if (!controllerCanControl) return;
+  event.preventDefault();
+  controllerPointer = event.pointerId;
+  controllerPad.setPointerCapture(event.pointerId);
+  controllerPad.classList.add("is-active");
+  setControllerFromPointer(event.clientX, event.clientY);
+  clearInterval(controllerInputTimer);
+  controllerInputTimer = setInterval(() => {
+    sendControllerInput();
+  }, 90);
+});
+controllerPad.addEventListener("pointermove", (event) => {
+  if (controllerPointer !== event.pointerId) return;
+  event.preventDefault();
+  setControllerFromPointer(event.clientX, event.clientY);
+});
+controllerPad.addEventListener("pointerup", (event) => {
+  releaseControllerPointer(event.pointerId);
+});
+controllerPad.addEventListener("pointercancel", (event) => {
+  releaseControllerPointer(event.pointerId);
+});
+window.addEventListener("blur", () => {
+  if (controllerPointer !== null) {
+    releaseControllerPointer(controllerPointer);
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && controllerPointer !== null) {
+    releaseControllerPointer(controllerPointer);
+  }
+});
+
+routeHighlightButton.addEventListener("click", async () => {
+  if (!controllerCredentials || !controllerRouteReady) return;
+  routeHighlightButton.disabled = true;
+  routeHighlightButton.classList.add("is-active");
+  routeHighlightButton.textContent = "経路が光っています";
+  try {
+    const response = await fetch(
+      `/api/controller/sessions/${controllerCredentials.sessionId}/highlight`,
+      {
+        method: "POST",
+        headers: controllerHeaders(),
+      },
+    );
+    await readResponse(response);
+  } catch {
+    routeHighlightButton.textContent = "少し待ってもう一度";
+  }
+  window.setTimeout(() => {
+    routeHighlightButton.classList.remove("is-active");
+    routeHighlightButton.textContent = "自分の経路を光らせる";
+    routeHighlightButton.disabled = !controllerRouteReady;
+  }, 5_000);
+});
+
 returnButton.addEventListener("click", resetExperience);
 errorReturnButton.addEventListener("click", resetExperience);
+
+async function restoreControllerSession() {
+  let stored;
+  try {
+    stored = JSON.parse(sessionStorage.getItem(CONTROLLER_STORAGE_KEY));
+  } catch {
+    stored = null;
+  }
+  if (!stored?.measurementId || !stored?.sessionId || !stored?.token) return;
+  controllerCredentials = stored;
+  setPanel("measuring");
+  startElapsedClock();
+  try {
+    const response = await fetch(
+      `/api/measurements/${stored.measurementId}`,
+      { cache: "no-store" },
+    );
+    const record = await readResponse(response);
+    const completed =
+      record.status === "completed"
+        ? record
+        : await waitForMeasurement(stored.measurementId);
+    if (completed.status === "completed") {
+      renderResult(completed);
+      return;
+    }
+  } catch {
+    sessionStorage.removeItem(CONTROLLER_STORAGE_KEY);
+    controllerCredentials = null;
+    setPanel("intro");
+  }
+}
+
+restoreControllerSession();

@@ -207,7 +207,8 @@ a {
 
 .bird-controls,
 .fog-controls,
-.message-controls {
+.message-controls,
+.wind-controls {
   display: none;
   grid-template-columns: minmax(210px, 1.4fr) repeat(8, minmax(104px, 1fr));
   gap: 22px;
@@ -233,6 +234,10 @@ body.is-message-lab .message-controls {
   display: grid;
 }
 
+body.is-plane-wind-lab .wind-controls {
+  display: grid;
+}
+
 body.is-bird-lab .proof:not(.is-candidate) {
   display: none;
 }
@@ -245,9 +250,14 @@ body.is-message-lab .proof:not(.is-candidate) {
   display: none;
 }
 
+body.is-plane-wind-lab .proof:not(.is-candidate) {
+  display: none;
+}
+
 .bird-controls label > span,
 .fog-controls label > span,
-.message-controls label > span {
+.message-controls label > span,
+.wind-controls label > span {
   display: flex;
   justify-content: space-between;
   margin-bottom: 9px;
@@ -255,7 +265,8 @@ body.is-message-lab .proof:not(.is-candidate) {
 
 .bird-controls output,
 .fog-controls output,
-.message-controls output {
+.message-controls output,
+.wind-controls output {
   color: var(--paper);
 }
 
@@ -264,14 +275,17 @@ body.is-message-lab .proof:not(.is-candidate) {
 .fog-controls input,
 .fog-controls select,
 .message-controls input,
-.message-controls select {
+.message-controls select,
+.wind-controls input,
+.wind-controls select {
   width: 100%;
   accent-color: var(--seed);
 }
 
 .bird-controls select,
 .fog-controls select,
-.message-controls select {
+.message-controls select,
+.wind-controls select {
   min-height: 35px;
   padding: 0 9px;
   border: 1px solid rgba(213, 162, 75, 0.46);
@@ -286,6 +300,9 @@ body.is-message-lab .proof:not(.is-candidate) {
 .fog-controls input:focus-visible,
 .message-controls select:focus-visible,
 .message-controls input:focus-visible,
+.wind-controls select:focus-visible,
+.wind-controls input:focus-visible,
+.wind-control-pad:focus-visible,
 .message-replay:focus-visible,
 .lab-controls button:focus-visible {
   outline: 1px solid var(--paper);
@@ -298,6 +315,63 @@ body.is-message-lab .proof:not(.is-candidate) {
   color: var(--seed);
   background: transparent;
   cursor: pointer;
+}
+
+.wind-control-pad {
+  position: relative;
+  width: 84px;
+  aspect-ratio: 1;
+  justify-self: center;
+  border: 1px solid rgba(184, 222, 213, 0.35);
+  border-radius: 50%;
+  background:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 0.5px),
+      rgba(184, 222, 213, 0.16) 50%,
+      transparent calc(50% + 0.5px)
+    ),
+    linear-gradient(
+      transparent calc(50% - 0.5px),
+      rgba(184, 222, 213, 0.16) 50%,
+      transparent calc(50% + 0.5px)
+    );
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.wind-control-pad.is-active {
+  cursor: grabbing;
+}
+
+#wind-control-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--seed);
+  border-radius: 50%;
+  background: var(--night-lift);
+  box-shadow: 0 0 12px rgba(213, 162, 75, 0.32);
+  transform: translate(-50%, -50%);
+}
+
+.wind-switch {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.wind-switch > span {
+  margin: 0;
+}
+
+.wind-switch input {
+  width: 18px;
+  height: 18px;
 }
 
 .proofs {
@@ -542,6 +616,10 @@ body.is-message-lab .proof:not(.is-candidate) {
     grid-template-columns: repeat(4, minmax(120px, 1fr));
   }
 
+  .wind-controls {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+  }
+
   .proofs {
     grid-template-columns: 1fr;
   }
@@ -625,8 +703,14 @@ body.is-message-lab .proof:not(.is-candidate) {
     padding: 20px;
   }
 
+  .wind-controls {
+    grid-template-columns: 1fr 1fr;
+    padding: 20px;
+  }
+
   .bird-preset,
-  .message-preset {
+  .message-preset,
+  .wind-preset {
     grid-column: 1 / -1;
   }
 

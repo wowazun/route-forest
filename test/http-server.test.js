@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import test from "node:test";
 import { MeasurementService } from "../src/application/measurement-service.js";
+import { ControllerSessionService } from "../src/application/controller-session-service.js";
 import { NodeAnonymizer } from "../src/domain/anonymizer.js";
 import { createHttpServer } from "../src/http/server.js";
 
@@ -46,6 +47,50 @@ async function withServer(run) {
   }
 }
 
+async function withReadyControllerServer(run) {
+  const service = new MeasurementService({
+    anonymizer: new NodeAnonymizer("controller-test-secret-that-is-long-enough"),
+    resolver: {
+      resolve: async () => ({ address: "8.8.8.8", family: 4 }),
+    },
+    runner: {
+      run: async () => ({
+        stdout: "1  8.8.8.8  1.0 ms",
+        stderr: "",
+        exitCode: 0,
+        signal: null,
+        timedOut: false,
+      }),
+    },
+    config: {
+      concurrency: 1,
+      queueCapacity: 4,
+      cooldownMs: 60_000,
+      recordTtlMs: 900_000,
+      consentVersion: "v1",
+    },
+  });
+  const controllerService = new ControllerSessionService({
+    recordProvider: (measurementId) => service.get(measurementId),
+    clock: () => new Date(Date.now() + 60_000),
+  });
+  const server = createHttpServer({
+    measurementService: service,
+    controllerService,
+    config: { publicOrigin: PUBLIC_ORIGIN },
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const { port } = server.address();
+  try {
+    await run(`http://127.0.0.1:${port}`);
+  } finally {
+    server.closeAllConnections();
+    server.close();
+    await once(server, "close");
+  }
+}
+
 test("accepts a consented request for a normalized website destination", async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/measurements`, {
@@ -65,8 +110,122 @@ test("accepts a consented request for a normalized website destination", async (
 
     assert.equal(response.status, 202);
     assert.match(body.measurementId, /^[0-9a-f-]{36}$/);
+    assert.match(body.controller.sessionId, /^[0-9a-f-]{36}$/);
+    assert.ok(body.controller.token.length >= 32);
     assert.equal(body.destination.hostname, "example.com");
     assert.equal(JSON.stringify(body).includes("8.8.8.8"), false);
+
+    const controllerStatus = await fetch(
+      `${baseUrl}/api/controller/sessions/${body.controller.sessionId}`,
+      {
+        headers: {
+          authorization: `Bearer ${body.controller.token}`,
+        },
+      },
+    );
+    assert.equal(controllerStatus.status, 200);
+    assert.match(
+      (await controllerStatus.json()).phase,
+      /connecting|measuring|carrying|opening|preparing|controllable/,
+    );
+
+    const unauthorized = await fetch(
+      `${baseUrl}/api/controller/sessions/${body.controller.sessionId}`,
+      {
+        headers: {
+          authorization: `Bearer ${"x".repeat(43)}`,
+        },
+      },
+    );
+    assert.equal(unauthorized.status, 401);
+  });
+});
+
+test("forwards authenticated controller input and route highlights to displays", async () => {
+  await withReadyControllerServer(async (baseUrl) => {
+    const stream = await fetch(`${baseUrl}/api/display/events`);
+    const reader = stream.body.getReader();
+    const decoder = new TextDecoder();
+    let streamText = "";
+    async function readUntil(pattern) {
+      const deadline = Date.now() + 2_000;
+      while (!streamText.includes(pattern) && Date.now() < deadline) {
+        const result = await Promise.race([
+          reader.read(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("SSE read timed out")), 500),
+          ),
+        ]);
+        if (result.done) break;
+        streamText += decoder.decode(result.value);
+      }
+      assert.match(streamText, new RegExp(pattern));
+    }
+
+    const response = await fetch(`${baseUrl}/api/measurements`, {
+      method: "POST",
+      headers: {
+        "cf-connecting-ip": "8.8.8.8",
+        "content-type": "application/json",
+        origin: PUBLIC_ORIGIN,
+      },
+      body: JSON.stringify({
+        website: "example.com",
+        consentAccepted: true,
+        consentVersion: "v1",
+      }),
+    });
+    const created = await response.json();
+    let record;
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      record = await (
+        await fetch(`${baseUrl}/api/measurements/${created.measurementId}`)
+      ).json();
+      if (record.status === "completed") break;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    assert.equal(record.status, "completed");
+
+    const input = await fetch(
+      `${baseUrl}/api/controller/sessions/${created.controller.sessionId}/input`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${created.controller.token}`,
+          "content-type": "application/json",
+          origin: PUBLIC_ORIGIN,
+        },
+        body: JSON.stringify({
+          x: 2,
+          y: -2,
+          sequence: 1,
+          inputAt: Date.now(),
+        }),
+      },
+    );
+    assert.equal(input.status, 202);
+    assert.deepEqual(await input.json(), {
+      accepted: true,
+      sequence: 1,
+      x: 1,
+      y: -1,
+    });
+    await readUntil("event: plane-control");
+    assert.match(streamText, new RegExp(created.measurementId));
+
+    const highlight = await fetch(
+      `${baseUrl}/api/controller/sessions/${created.controller.sessionId}/highlight`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${created.controller.token}`,
+          origin: PUBLIC_ORIGIN,
+        },
+      },
+    );
+    assert.equal(highlight.status, 202);
+    await readUntil("event: route-highlight");
+    await reader.cancel();
   });
 });
 
@@ -86,6 +245,7 @@ test("serves the participation page and assets with a restrictive CSP", async ()
     const script = await fetch(`${baseUrl}/app.js`);
     assert.equal(script.status, 200);
     assert.match(script.headers.get("content-type"), /^text\/javascript/);
+    assert.match(await script.text(), /controller-pad|sendControllerInput/);
   });
 });
 

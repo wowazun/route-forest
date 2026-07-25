@@ -6,6 +6,10 @@ import {
   IpAddressError,
 } from "../domain/ip-address.js";
 import { MeasurementRequestError } from "../application/measurement-service.js";
+import {
+  ControllerSessionError,
+  ControllerSessionService,
+} from "../application/controller-session-service.js";
 import { QueueFullError } from "../application/bounded-job-queue.js";
 import { WebsiteDestinationError } from "../domain/website-destination.js";
 
@@ -175,9 +179,45 @@ function assertAllowedOrigin(request, publicOrigin) {
   }
 }
 
+function bearerToken(request) {
+  const authorization = request.headers.authorization || "";
+  const match = /^Bearer ([A-Za-z0-9_-]{32,128})$/.exec(authorization);
+  if (!match) {
+    throw new ControllerSessionError(
+      "controller_unauthorized",
+      "Controller authorization is required",
+      401,
+    );
+  }
+  return match[1];
+}
+
+function assertControllerInputBody(body) {
+  const allowed = new Set(["inputAt", "sequence", "x", "y"]);
+  for (const field of Object.keys(body)) {
+    if (!allowed.has(field)) {
+      throw new ControllerSessionError(
+        "unexpected_controller_field",
+        "The controller input contains an unsupported field",
+      );
+    }
+  }
+  if (
+    !Number.isSafeInteger(body.inputAt) ||
+    body.inputAt < 0 ||
+    body.inputAt > Date.now() + 60_000
+  ) {
+    throw new ControllerSessionError(
+      "invalid_controller_timestamp",
+      "inputAt must be a valid client timestamp",
+    );
+  }
+}
+
 function errorResponse(error) {
   if (
     error instanceof MeasurementRequestError ||
+    error instanceof ControllerSessionError ||
     error instanceof IpAddressError ||
     error instanceof WebsiteDestinationError
   ) {
@@ -206,6 +246,10 @@ function errorResponse(error) {
 export function createHttpServer({
   measurementService,
   config,
+  controllerService = new ControllerSessionService({
+    recordProvider: (measurementId) => measurementService.get(measurementId),
+    recordTtlMs: config.measurements?.recordTtlMs,
+  }),
   publicDirectory = DEFAULT_PUBLIC_DIRECTORY,
 }) {
   const displayClients = new Set();
@@ -256,7 +300,10 @@ export function createHttpServer({
           observations: measurementService.getRecentObservations(),
         });
 
-        const unsubscribe = measurementService.subscribe((event) => {
+        const unsubscribeMeasurements = measurementService.subscribe((event) => {
+          sendSseEvent(response, event.type, event);
+        });
+        const unsubscribeControllers = controllerService.subscribe((event) => {
           sendSseEvent(response, event.type, event);
         });
         const heartbeat = setInterval(() => {
@@ -264,11 +311,17 @@ export function createHttpServer({
         }, 15_000);
         heartbeat.unref();
 
-        const client = { response, unsubscribe, heartbeat };
+        const client = {
+          response,
+          unsubscribeMeasurements,
+          unsubscribeControllers,
+          heartbeat,
+        };
         displayClients.add(client);
         request.once("close", () => {
           clearInterval(heartbeat);
-          unsubscribe();
+          unsubscribeMeasurements();
+          unsubscribeControllers();
           displayClients.delete(client);
         });
         return;
@@ -288,7 +341,8 @@ export function createHttpServer({
           consentAccepted: body.consentAccepted,
           consentVersion: body.consentVersion,
         });
-        sendJson(response, 202, record);
+        const controller = controllerService.create(record.measurementId);
+        sendJson(response, 202, { ...record, controller });
         return;
       }
 
@@ -307,6 +361,66 @@ export function createHttpServer({
           return;
         }
         sendJson(response, 200, record);
+        return;
+      }
+
+      const controllerStatusMatch =
+        request.method === "GET" &&
+        /^\/api\/controller\/sessions\/([0-9a-f-]{36})$/.exec(url.pathname);
+      if (controllerStatusMatch) {
+        const status = controllerService.status(
+          controllerStatusMatch[1],
+          bearerToken(request),
+        );
+        sendJson(response, 200, status);
+        return;
+      }
+
+      const controllerInputMatch =
+        request.method === "POST" &&
+        /^\/api\/controller\/sessions\/([0-9a-f-]{36})\/input$/.exec(
+          url.pathname,
+        );
+      if (controllerInputMatch) {
+        assertAllowedOrigin(request, config.publicOrigin);
+        const body = await readJson(request);
+        assertControllerInputBody(body);
+        const accepted = controllerService.input(
+          controllerInputMatch[1],
+          bearerToken(request),
+          body,
+        );
+        sendJson(response, 202, accepted);
+        return;
+      }
+
+      const controllerHighlightMatch =
+        request.method === "POST" &&
+        /^\/api\/controller\/sessions\/([0-9a-f-]{36})\/highlight$/.exec(
+          url.pathname,
+        );
+      if (controllerHighlightMatch) {
+        assertAllowedOrigin(request, config.publicOrigin);
+        const accepted = controllerService.highlight(
+          controllerHighlightMatch[1],
+          bearerToken(request),
+        );
+        sendJson(response, 202, accepted);
+        return;
+      }
+
+      const controllerEndMatch =
+        request.method === "POST" &&
+        /^\/api\/controller\/sessions\/([0-9a-f-]{36})\/end$/.exec(
+          url.pathname,
+        );
+      if (controllerEndMatch) {
+        assertAllowedOrigin(request, config.publicOrigin);
+        const ended = controllerService.end(
+          controllerEndMatch[1],
+          bearerToken(request),
+        );
+        sendJson(response, 200, ended);
         return;
       }
 

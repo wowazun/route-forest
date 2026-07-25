@@ -42,6 +42,24 @@ export const visualStyle = deepFreeze({
     routeMinimumMs: 5_200,
     routeStepMs: 1_050,
   },
+  physics: {
+    plane: {
+      windStrength: 26,
+      controlStrength: 80,
+      drag: 1.15,
+      maxSpeed: 230,
+      headingResponse: 5,
+      inputTimeoutMs: 360,
+    },
+    wind: {
+      seed: 411,
+      scale: 0.0036,
+      timeScale: 1,
+      maximum: 1,
+      treeInfluence: 0.34,
+      treeRadius: 92,
+    },
+  },
   density: {
     activeBirds: 3,
     performanceTrees: 220,

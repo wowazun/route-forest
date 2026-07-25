@@ -19,9 +19,17 @@ import { strokeSmoothRoute } from "./display-art.js";
 import {
   drawLegacyMessageArt,
   drawMessageArt,
+  drawPaperPlaneArt,
   messageProgressForState,
   messageStateAt,
 } from "./message-art.js";
+import {
+  combinePlaneForces,
+  createTreeWindIndex,
+  createWindField,
+  integratePlane,
+  smoothPlaneHeading,
+} from "./flow-field.js";
 import { visualStyle } from "./visual-style.js";
 
 const proofs = document.querySelector("#proofs");
@@ -95,6 +103,37 @@ const messageOutputs = {
   size: document.querySelector("#message-size-output"),
   contrast: document.querySelector("#message-contrast-output"),
 };
+const windPreset = document.querySelector("#wind-preset");
+const windControlPad = document.querySelector("#wind-control-pad");
+const windControlKnob = document.querySelector("#wind-control-knob");
+const windInputX = document.querySelector("#wind-input-x");
+const windInputY = document.querySelector("#wind-input-y");
+const windStrengthControl = document.querySelector("#wind-strength");
+const windControlStrength = document.querySelector("#wind-control");
+const windDrag = document.querySelector("#wind-drag");
+const windMaxSpeed = document.querySelector("#wind-max-speed");
+const windScale = document.querySelector("#wind-scale");
+const windTime = document.querySelector("#wind-time");
+const windTree = document.querySelector("#wind-tree");
+const windRadius = document.querySelector("#wind-radius");
+const windSeed = document.querySelector("#wind-seed");
+const windEnabled = document.querySelector("#wind-enabled");
+const windTrail = document.querySelector("#wind-trail");
+const windVectors = document.querySelector("#wind-vectors");
+const windReset = document.querySelector("#wind-reset");
+const windOutputs = {
+  x: document.querySelector("#wind-input-x-output"),
+  y: document.querySelector("#wind-input-y-output"),
+  strength: document.querySelector("#wind-strength-output"),
+  control: document.querySelector("#wind-control-output"),
+  drag: document.querySelector("#wind-drag-output"),
+  maxSpeed: document.querySelector("#wind-max-speed-output"),
+  scale: document.querySelector("#wind-scale-output"),
+  time: document.querySelector("#wind-time-output"),
+  tree: document.querySelector("#wind-tree-output"),
+  radius: document.querySelector("#wind-radius-output"),
+  seed: document.querySelector("#wind-seed-output"),
+};
 const fogRenderer = createFogRenderer({
   createCanvas: () => document.createElement("canvas"),
 });
@@ -116,6 +155,7 @@ const modes = new Set([
   "adopted-wing",
   "fog-lab",
   "message-lab",
+  "plane-wind-lab",
 ]);
 let mode = modes.has(searchParameters.get("mode"))
   ? searchParameters.get("mode")
@@ -130,6 +170,9 @@ let lastFrame = performance.now();
 let sceneTime = 2_400;
 let flapAutomatic = true;
 let messageAutomatic = false;
+let windPadPointer = null;
+let windFieldCache = null;
+let windFieldCacheKey = "";
 
 function clamp(value, minimum = 0, maximum = 1) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -187,6 +230,21 @@ const MESSAGE_PRESETS = Object.freeze({
   sizes: Object.freeze({ sizes: true, progress: messageProgressForState("readable", 0.72) }),
 });
 
+const WIND_PRESETS = Object.freeze({
+  "control-only": Object.freeze({ wind: 0, control: 86, trees: "none", x: 72, y: -18, enabled: false, tree: 0 }),
+  "wind-only": Object.freeze({ wind: 32, control: 0, trees: "small", x: 0, y: 0, enabled: true, tree: 34 }),
+  combined: Object.freeze({ wind: 26, control: 80, trees: "multiple", x: 48, y: -18, enabled: true, tree: 34 }),
+  inertia: Object.freeze({ wind: 0, control: 0, trees: "none", x: 0, y: 0, enabled: false, tree: 0 }),
+  "no-trees": Object.freeze({ wind: 28, control: 0, trees: "none", x: 0, y: 0, enabled: true, tree: 0 }),
+  "small-tree": Object.freeze({ wind: 28, control: 0, trees: "small", x: 0, y: 0, enabled: true, tree: 28 }),
+  "large-tree": Object.freeze({ wind: 28, control: 0, trees: "large", x: 0, y: 0, enabled: true, tree: 46 }),
+  "multiple-trees": Object.freeze({ wind: 28, control: 0, trees: "multiple", x: 0, y: 0, enabled: true, tree: 38 }),
+  "strong-vortex": Object.freeze({ wind: 48, control: 68, trees: "large", x: 38, y: -12, enabled: true, tree: 92 }),
+  "weak-wind": Object.freeze({ wind: 10, control: 80, trees: "small", x: 42, y: -8, enabled: true, tree: 22 }),
+  joystick: Object.freeze({ wind: 26, control: 80, trees: "multiple", x: 0, y: 0, enabled: true, tree: 34 }),
+  "release-to-wind": Object.freeze({ wind: 30, control: 80, trees: "large", x: 65, y: -18, enabled: true, tree: 52, release: true }),
+});
+
 function updateBirdControlOutputs() {
   birdOutputs.flap.textContent = flapAutomatic
     ? "AUTO"
@@ -222,6 +280,48 @@ function updateMessageControlOutputs(progressValue = Number(messageProgress.valu
   messageOutputs.glow.textContent = `${messageGlow.value}%`;
   messageOutputs.size.textContent = `${messageSize.value}%`;
   messageOutputs.contrast.textContent = `${messageContrast.value}%`;
+}
+
+function updateWindControlOutputs() {
+  windOutputs.x.textContent = `${windInputX.value}%`;
+  windOutputs.y.textContent = `${windInputY.value}%`;
+  windOutputs.strength.textContent = windStrengthControl.value;
+  windOutputs.control.textContent = windControlStrength.value;
+  windOutputs.drag.textContent = (Number(windDrag.value) / 100).toFixed(2);
+  windOutputs.maxSpeed.textContent = windMaxSpeed.value;
+  windOutputs.scale.textContent = (Number(windScale.value) / 10_000).toFixed(4);
+  windOutputs.time.textContent = (Number(windTime.value) / 100).toFixed(2);
+  windOutputs.tree.textContent = (Number(windTree.value) / 100).toFixed(2);
+  windOutputs.radius.textContent = windRadius.value;
+  windOutputs.seed.textContent = windSeed.value;
+}
+
+function resetWindProofs() {
+  for (const proof of proofStates) {
+    proof.planeWind = null;
+    proof.windTreeIndex = null;
+    proof.windTreeKey = "";
+    proof.lastWindTime = sceneTime;
+  }
+}
+
+function applyWindPreset(name) {
+  const selected = WIND_PRESETS[name] || WIND_PRESETS.combined;
+  windPreset.value = name in WIND_PRESETS ? name : "combined";
+  windStrengthControl.value = String(selected.wind);
+  windControlStrength.value = String(selected.control);
+  windInputX.value = String(selected.x);
+  windInputY.value = String(selected.y);
+  windEnabled.checked = selected.enabled;
+  windTree.value = String(selected.tree);
+  windFieldCache = null;
+  windFieldCacheKey = "";
+  updateWindControlOutputs();
+  resetWindProofs();
+  const url = new URL(window.location.href);
+  url.searchParams.set("windPreset", windPreset.value);
+  window.history.replaceState({}, "", url);
+  selectedLink.href = url.pathname + url.search;
 }
 
 function messageSequenceProgress(time) {
@@ -1129,6 +1229,217 @@ function drawMessageWorkbench(proof, time) {
   proof.article.dataset.controllable = String(rendered.state === "controllable");
 }
 
+function windTreesForScene(proof, scene) {
+  const { width, height } = proof;
+  if (scene === "none") return [];
+  if (scene === "small") {
+    return [
+      { x: width * 0.58, y: height * 0.68, size: 18, seed: "wind-small" },
+    ];
+  }
+  if (scene === "large") {
+    return [
+      { x: width * 0.56, y: height * 0.7, size: 56, seed: "wind-large" },
+    ];
+  }
+  return [
+    { x: width * 0.34, y: height * 0.7, size: 28, seed: "wind-a" },
+    { x: width * 0.57, y: height * 0.68, size: 52, seed: "wind-b" },
+    { x: width * 0.76, y: height * 0.73, size: 35, seed: "wind-c" },
+  ];
+}
+
+function currentWindField() {
+  const key = [
+    windSeed.value,
+    windScale.value,
+    windTime.value,
+    windTree.value,
+    windRadius.value,
+  ].join("|");
+  if (!windFieldCache || windFieldCacheKey !== key) {
+    windFieldCache = createWindField({
+      seed: Number(windSeed.value),
+      scale: Number(windScale.value) / 10_000,
+      timeScale: Number(windTime.value) / 100,
+      maximum: 1,
+      treeInfluence: Number(windTree.value) / 100,
+      treeRadius: Number(windRadius.value),
+    });
+    windFieldCacheKey = key;
+  }
+  return windFieldCache;
+}
+
+function drawPlaneWindWorkbench(proof, time) {
+  const { context, width, height, variant } = proof;
+  const presetName = windPreset.value;
+  const preset = WIND_PRESETS[presetName] || WIND_PRESETS.combined;
+  const trees = windTreesForScene(proof, preset.trees);
+  const treeKey = `${preset.trees}|${Math.round(width)}|${Math.round(height)}`;
+  if (!proof.windTreeIndex || proof.windTreeKey !== treeKey) {
+    proof.windTreeIndex = createTreeWindIndex({ trees });
+    proof.windTreeKey = treeKey;
+  }
+  if (!proof.planeWind) {
+    proof.planeWind = {
+      x: width * 0.22,
+      y: height * 0.42,
+      vx: 44,
+      vy: -3,
+      heading: 0,
+      wind: { x: 0, y: 0 },
+      trail: [],
+    };
+    proof.lastWindTime = time;
+  }
+
+  const deltaSeconds = Math.min(
+    0.05,
+    Math.max(0, (time - proof.lastWindTime) / 1_000),
+  );
+  proof.lastWindTime = time;
+  const field = currentWindField();
+  const releaseCycle = (time % 5_000) / 5_000;
+  const inputReleased = Boolean(preset.release && releaseCycle > 0.32);
+  const control = inputReleased
+    ? { x: 0, y: 0 }
+    : {
+        x: Number(windInputX.value) / 100,
+        y: Number(windInputY.value) / 100,
+      };
+  proof.planeWind.wind = windEnabled.checked
+    ? field.sample(
+        proof.planeWind.x,
+        proof.planeWind.y,
+        time / 1_000,
+        proof.windTreeIndex,
+      )
+    : { x: 0, y: 0 };
+  const forces = combinePlaneForces({
+    wind: proof.planeWind.wind,
+    control,
+    windStrength: Number(windStrengthControl.value),
+    controlStrength: Number(windControlStrength.value),
+  });
+  const integrated = integratePlane(
+    proof.planeWind,
+    forces.totalForce,
+    deltaSeconds,
+    {
+      drag: Number(windDrag.value) / 100,
+      maxSpeed: Number(windMaxSpeed.value),
+    },
+  );
+  proof.planeWind.x = integrated.x;
+  proof.planeWind.y = integrated.y;
+  proof.planeWind.vx = integrated.vx;
+  proof.planeWind.vy = integrated.vy;
+  proof.planeWind.heading = smoothPlaneHeading(
+    proof.planeWind.heading,
+    integrated,
+    deltaSeconds,
+    { response: 5 },
+  );
+
+  const margin = 34;
+  if (proof.planeWind.x < -margin) proof.planeWind.x = width + margin;
+  if (proof.planeWind.x > width + margin) proof.planeWind.x = -margin;
+  if (proof.planeWind.y < -margin) proof.planeWind.y = height + margin;
+  if (proof.planeWind.y > height + margin) proof.planeWind.y = -margin;
+  proof.planeWind.trail.push({
+    x: proof.planeWind.x,
+    y: proof.planeWind.y,
+  });
+  if (proof.planeWind.trail.length > 72) proof.planeWind.trail.shift();
+
+  for (const tree of trees) {
+    drawTreeVariant(context, variant.id, {
+      x: tree.x,
+      y: tree.y,
+      size: tree.size,
+      growth: Math.min(1, tree.size / 56),
+      count: Math.round(tree.size * 0.7),
+      seed: tree.seed,
+    });
+  }
+
+  if (windVectors.checked && windEnabled.checked) {
+    context.save();
+    context.lineCap = "round";
+    const spacing = Math.max(72, width / 12);
+    for (let y = spacing * 0.7; y < height; y += spacing) {
+      for (let x = spacing * 0.55; x < width; x += spacing) {
+        const wind = field.sample(x, y, time / 1_000, proof.windTreeIndex);
+        context.strokeStyle = "rgba(116, 169, 165, 0.16)";
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(x - wind.x * 10, y - wind.y * 10);
+        context.lineTo(x + wind.x * 17, y + wind.y * 17);
+        context.stroke();
+      }
+    }
+    context.restore();
+  }
+
+  if (windTrail.checked && proof.planeWind.trail.length > 1) {
+    context.save();
+    context.lineCap = "round";
+    for (
+      let index = 1;
+      index < proof.planeWind.trail.length;
+      index += 1
+    ) {
+      const from = proof.planeWind.trail[index - 1];
+      const to = proof.planeWind.trail[index];
+      context.strokeStyle = `rgba(213, 162, 75, ${
+        (index / proof.planeWind.trail.length) * 0.3
+      })`;
+      context.lineWidth = 1.1;
+      context.beginPath();
+      context.moveTo(from.x, from.y);
+      context.lineTo(to.x, to.y);
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  drawPaperPlaneArt(context, {
+    x: proof.planeWind.x,
+    y: proof.planeWind.y,
+    angle: proof.planeWind.heading,
+    scale: 1.25,
+    glow: 0.25,
+    contrast: 0.3,
+    controllable: 1,
+    time,
+  });
+
+  context.fillStyle = "rgba(231, 238, 240, 0.42)";
+  context.font = '10px "SFMono-Regular", Consolas, monospace';
+  context.fillText(
+    `PLANE + CURL / ${presetName.toUpperCase().replaceAll("-", " ")}`,
+    20,
+    30,
+  );
+  context.fillText(
+    `INPUT ${control.x.toFixed(2)}, ${control.y.toFixed(2)} / WIND ${proof.planeWind.wind.x.toFixed(2)}, ${proof.planeWind.wind.y.toFixed(2)}`,
+    20,
+    48,
+  );
+  proof.frameCount += 1;
+  proof.article.dataset.frames = String(proof.frameCount);
+  proof.article.dataset.mode = mode;
+  proof.article.dataset.windPreset = presetName;
+  proof.article.dataset.windTrees = String(trees.length);
+  proof.article.dataset.windEnabled = String(windEnabled.checked);
+  proof.article.dataset.controlEnabled = String(
+    Number(windControlStrength.value) > 0 && !inputReleased,
+  );
+  proof.article.dataset.windX = proof.planeWind.wind.x.toFixed(3);
+  proof.article.dataset.windY = proof.planeWind.wind.y.toFixed(3);
+}
+
 function drawProof(proof, time) {
   const { context, width, height, variant } = proof;
   if (width <= 0 || height <= 0) return;
@@ -1139,6 +1450,11 @@ function drawProof(proof, time) {
   context.fillStyle = gradient;
   context.fillRect(0, 0, width, height);
   drawWind(context, width, height, time);
+
+  if (mode === "plane-wind-lab") {
+    drawPlaneWindWorkbench(proof, time);
+    return;
+  }
 
   if (mode === "message-lab") {
     drawMessageWorkbench(proof, time);
@@ -1288,6 +1604,10 @@ function updateModePresentation() {
   );
   document.body.classList.toggle("is-fog-lab", mode === "fog-lab");
   document.body.classList.toggle("is-message-lab", mode === "message-lab");
+  document.body.classList.toggle(
+    "is-plane-wind-lab",
+    mode === "plane-wind-lab",
+  );
   for (const candidate of modeButtons) {
     candidate.classList.toggle("is-selected", candidate.dataset.mode === mode);
   }
@@ -1321,6 +1641,9 @@ fogPreset.addEventListener("change", () => {
 });
 messagePreset.addEventListener("change", () => {
   applyMessagePreset(messagePreset.value);
+});
+windPreset.addEventListener("change", () => {
+  applyWindPreset(windPreset.value);
 });
 birdFlap.addEventListener("input", () => {
   flapAutomatic = false;
@@ -1371,6 +1694,77 @@ for (const control of [
     updateMessageControlOutputs();
   });
 }
+for (const control of [windInputX, windInputY]) {
+  control.addEventListener("input", updateWindControlOutputs);
+}
+for (const control of [
+  windStrengthControl,
+  windControlStrength,
+  windDrag,
+  windMaxSpeed,
+  windScale,
+  windTime,
+  windTree,
+  windRadius,
+  windSeed,
+  windEnabled,
+]) {
+  control.addEventListener("input", () => {
+    windFieldCache = null;
+    windFieldCacheKey = "";
+    updateWindControlOutputs();
+  });
+}
+for (const control of [windTrail, windVectors]) {
+  control.addEventListener("input", updateWindControlOutputs);
+}
+function setWindPad(clientX, clientY) {
+  const rect = windControlPad.getBoundingClientRect();
+  const radius = rect.width * 0.36;
+  let x = (clientX - (rect.left + rect.width / 2)) / radius;
+  let y = (clientY - (rect.top + rect.height / 2)) / radius;
+  const magnitude = Math.hypot(x, y);
+  if (magnitude > 1) {
+    x /= magnitude;
+    y /= magnitude;
+  }
+  windInputX.value = String(Math.round(x * 100));
+  windInputY.value = String(Math.round(y * 100));
+  const travel = rect.width * 0.3;
+  windControlKnob.style.transform = `translate(calc(-50% + ${
+    x * travel
+  }px), calc(-50% + ${y * travel}px))`;
+  updateWindControlOutputs();
+}
+function releaseWindPad(pointerId) {
+  if (windPadPointer !== pointerId) return;
+  windPadPointer = null;
+  windControlPad.classList.remove("is-active");
+  windInputX.value = "0";
+  windInputY.value = "0";
+  windControlKnob.style.transform = "translate(-50%, -50%)";
+  updateWindControlOutputs();
+}
+windControlPad.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  windPadPointer = event.pointerId;
+  windControlPad.setPointerCapture(event.pointerId);
+  windControlPad.classList.add("is-active");
+  windPreset.value = "joystick";
+  setWindPad(event.clientX, event.clientY);
+});
+windControlPad.addEventListener("pointermove", (event) => {
+  if (windPadPointer !== event.pointerId) return;
+  event.preventDefault();
+  setWindPad(event.clientX, event.clientY);
+});
+windControlPad.addEventListener("pointerup", (event) => {
+  releaseWindPad(event.pointerId);
+});
+windControlPad.addEventListener("pointercancel", (event) => {
+  releaseWindPad(event.pointerId);
+});
+windReset.addEventListener("click", resetWindProofs);
 messageReplay.addEventListener("click", () => {
   if (
     messagePreset.value !== "sequence" &&
@@ -1406,6 +1800,11 @@ applyMessagePreset(
   MESSAGE_PRESETS[searchParameters.get("messagePreset")]
     ? searchParameters.get("messagePreset")
     : "closed",
+);
+applyWindPreset(
+  WIND_PRESETS[searchParameters.get("windPreset")]
+    ? searchParameters.get("windPreset")
+    : "combined",
 );
 updateModePresentation();
 if (selectedVariant) selectVariant(selectedVariant);
@@ -1459,6 +1858,23 @@ window.__routeForestArtLab = Object.freeze({
       size: Number(messageSize.value),
       contrast: Number(messageContrast.value),
     },
+    wind: {
+      preset: windPreset.value,
+      inputX: Number(windInputX.value) / 100,
+      inputY: Number(windInputY.value) / 100,
+      enabled: windEnabled.checked,
+      strength: Number(windStrengthControl.value),
+      controlStrength: Number(windControlStrength.value),
+      drag: Number(windDrag.value) / 100,
+      maxSpeed: Number(windMaxSpeed.value),
+      scale: Number(windScale.value) / 10_000,
+      timeScale: Number(windTime.value) / 100,
+      treeInfluence: Number(windTree.value) / 100,
+      treeRadius: Number(windRadius.value),
+      seed: Number(windSeed.value),
+      trail: windTrail.checked,
+      vectors: windVectors.checked,
+    },
     proofs: proofStates.map((proof) => ({
       id: proof.variant.id,
       frames: proof.frameCount,
@@ -1467,6 +1883,10 @@ window.__routeForestArtLab = Object.freeze({
       fogPreset: proof.article.dataset.fogPreset || null,
       messagePreset: proof.article.dataset.messagePreset || null,
       messageState: proof.article.dataset.messageState || null,
+      windPreset: proof.article.dataset.windPreset || null,
+      windTrees: Number(proof.article.dataset.windTrees || 0),
+      windEnabled: proof.article.dataset.windEnabled || null,
+      controlEnabled: proof.article.dataset.controlEnabled || null,
     })),
   }),
 });

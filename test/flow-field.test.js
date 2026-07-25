@@ -3,7 +3,10 @@ import test from "node:test";
 import {
   combinePlaneForces,
   createCurlNoise,
+  createTreeWindIndex,
+  createWindField,
   integratePlane,
+  smoothPlaneHeading,
 } from "../public/flow-field.js";
 
 test("creates a deterministic, time-varying curl field", () => {
@@ -14,6 +17,45 @@ test("creates a deterministic, time-varying curl field", () => {
   assert.notDeepEqual(first.sample(320, 180, 2), first.sample(320, 180, 8));
   assert.ok(Number.isFinite(first.sample(320, 180, 2).x));
   assert.ok(Number.isFinite(first.sample(320, 180, 2).y));
+});
+
+test("adds a bounded deterministic turn around nearby growing trees", () => {
+  const field = createWindField({
+    seed: 411,
+    treeInfluence: 0.8,
+    treeRadius: 120,
+  });
+  const empty = createTreeWindIndex();
+  const trees = createTreeWindIndex({
+    trees: [{ x: 300, y: 200, size: 58, seed: "tree-a" }],
+  });
+  const withoutTree = field.sample(340, 200, 4, empty);
+  const withTree = field.sample(340, 200, 4, trees);
+
+  assert.notDeepEqual(withTree, withoutTree);
+  assert.deepEqual(withTree, field.sample(340, 200, 4, trees));
+  assert.ok(Math.hypot(withTree.x, withTree.y) <= 1.0001);
+});
+
+test("limits tree lookup and keeps heading stable near zero speed", () => {
+  const index = createTreeWindIndex({
+    trees: Array.from({ length: 40 }, (_, item) => ({
+      x: 100 + (item % 8) * 3,
+      y: 100 + Math.floor(item / 8) * 3,
+      size: 20,
+      seed: item,
+    })),
+    maximumNearby: 8,
+  });
+  assert.equal(index.query(110, 110).length, 8);
+  assert.equal(
+    smoothPlaneHeading(0.7, { x: 0.1, y: 0.1 }, 0.016),
+    0.7,
+  );
+  assert.notEqual(
+    smoothPlaneHeading(0, { x: 0, y: 20 }, 0.1),
+    0,
+  );
 });
 
 test("keeps the sampled field approximately divergence free", () => {

@@ -189,6 +189,63 @@
           <ol id="route-map" class="route-map" aria-label="匿名化された観測経路"></ol>
         </div>
 
+        <section
+          id="controller-panel"
+          class="route-controller"
+          aria-labelledby="controller-title"
+          hidden
+        >
+          <header class="controller-heading">
+            <div>
+              <p class="controller-kicker">YOUR PAPER / WIND CONTROL</p>
+              <h3 id="controller-title">紙飛行機を風へ放つ</h3>
+            </div>
+            <p id="controller-connection" class="controller-connection">
+              <span aria-hidden="true"></span>
+              <strong id="controller-connection-label">接続中</strong>
+            </p>
+          </header>
+          <p id="controller-state" class="controller-state" aria-live="polite">
+            経路を観測しています
+          </p>
+          <div class="controller-body">
+            <div
+              id="controller-pad"
+              class="controller-pad"
+              role="application"
+              tabindex="0"
+              aria-label="紙飛行機の方向操作"
+              aria-describedby="controller-help"
+              aria-disabled="true"
+            >
+              <span class="controller-orbit" aria-hidden="true"></span>
+              <span id="controller-knob" class="controller-knob" aria-hidden="true">
+                <i></i>
+              </span>
+            </div>
+            <div class="controller-actions">
+              <dl class="controller-vector" aria-label="操作入力">
+                <div><dt>X</dt><dd id="controller-x">0.00</dd></div>
+                <div><dt>Y</dt><dd id="controller-y">0.00</dd></div>
+              </dl>
+              <button
+                id="route-highlight-button"
+                class="route-highlight-action"
+                type="button"
+                disabled
+              >
+                自分の経路を光らせる
+              </button>
+              <p id="controller-help" class="controller-help">
+                円の中を指でなぞると、紙飛行機へ力が加わります。指を離すと風に戻ります。
+              </p>
+            </div>
+          </div>
+          <p id="controller-ended" class="controller-ended" hidden>
+            セッションが終了しました。もう一度参加すると、新しい紙飛行機が生まれます。
+          </p>
+        </section>
+
         <button id="return-button" class="secondary-action" type="button">
           説明へ戻る
         </button>

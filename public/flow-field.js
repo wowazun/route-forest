@@ -89,6 +89,127 @@ function boundedVector(vector) {
   return { x: x / magnitude, y: y / magnitude };
 }
 
+function stableAngle(value) {
+  const text = String(value ?? "tree");
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return ((hash >>> 0) / UINT32_MAX) * Math.PI * 2;
+}
+
+export function createTreeWindIndex({
+  trees = [],
+  cellSize = 180,
+  maximumNearby = 12,
+} = {}) {
+  const safeCellSize = clamp(Number(cellSize) || 180, 60, 600);
+  const safeMaximum = clamp(Math.trunc(maximumNearby) || 12, 1, 24);
+  const cells = new Map();
+  const normalizedTrees = [];
+  for (const tree of trees) {
+    const x = Number(tree?.x);
+    const y = Number(tree?.y);
+    const size = Math.max(0, Number(tree?.size) || 0);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const item = Object.freeze({
+      x,
+      y,
+      size,
+      seed: tree.seed ?? tree.nodeId ?? normalizedTrees.length,
+    });
+    normalizedTrees.push(item);
+    const cellX = Math.floor(x / safeCellSize);
+    const cellY = Math.floor(y / safeCellSize);
+    const key = `${cellX}:${cellY}`;
+    const cell = cells.get(key) || [];
+    cell.push(item);
+    cells.set(key, cell);
+  }
+
+  return Object.freeze({
+    size: normalizedTrees.length,
+    query(x, y, radius = safeCellSize) {
+      const cellX = Math.floor((Number(x) || 0) / safeCellSize);
+      const cellY = Math.floor((Number(y) || 0) / safeCellSize);
+      const cellSpan = clamp(
+        Math.ceil((Number(radius) || safeCellSize) / safeCellSize),
+        1,
+        3,
+      );
+      const candidates = [];
+      for (let oy = -cellSpan; oy <= cellSpan; oy += 1) {
+        for (let ox = -cellSpan; ox <= cellSpan; ox += 1) {
+          candidates.push(...(cells.get(`${cellX + ox}:${cellY + oy}`) || []));
+        }
+      }
+      candidates.sort(
+        (left, right) =>
+          Math.hypot(left.x - x, left.y - y) -
+          Math.hypot(right.x - x, right.y - y),
+      );
+      return Object.freeze(candidates.slice(0, safeMaximum));
+    },
+  });
+}
+
+export function createWindField({
+  seed = 411,
+  scale = 0.0036,
+  octaves = 3,
+  timeScale = 1,
+  maximum = 1,
+  treeInfluence = 0.34,
+  treeRadius = 92,
+} = {}) {
+  const curl = createCurlNoise({ seed, scale, octaves });
+  const safeMaximum = clamp(Number(maximum) || 1, 0.1, 3);
+  const safeTimeScale = clamp(Number(timeScale) || 1, 0, 8);
+  const safeTreeInfluence = clamp(Number(treeInfluence) || 0, 0, 2);
+  const safeTreeRadius = clamp(Number(treeRadius) || 92, 24, 360);
+
+  return Object.freeze({
+    sample(x, y, timeSeconds = 0, treeIndex = null) {
+      const base = curl.sample(x, y, timeSeconds * safeTimeScale);
+      let windX = base.x;
+      let windY = base.y;
+      const nearby =
+        treeIndex && typeof treeIndex.query === "function"
+          ? treeIndex.query(x, y, safeTreeRadius * 1.5)
+          : [];
+      for (const tree of nearby) {
+        let dx = x - tree.x;
+        let dy = y - tree.y;
+        let distance = Math.hypot(dx, dy);
+        if (distance < 0.001) {
+          const angle = stableAngle(tree.seed);
+          dx = Math.cos(angle);
+          dy = Math.sin(angle);
+          distance = 1;
+        }
+        const growth = clamp(tree.size / 58, 0, 1);
+        const radius = safeTreeRadius * (0.68 + growth * 0.82);
+        if (distance >= radius) continue;
+        const falloff = Math.pow(1 - distance / radius, 2);
+        const strength =
+          safeTreeInfluence * (0.35 + growth * 0.65) * falloff;
+        const normalX = dx / distance;
+        const normalY = dy / distance;
+        const turn = Math.sin(stableAngle(tree.seed)) >= 0 ? 1 : -1;
+        windX += -normalY * strength * turn + normalX * strength * 0.12;
+        windY += normalX * strength * turn + normalY * strength * 0.12;
+      }
+      const magnitude = Math.hypot(windX, windY);
+      if (magnitude > safeMaximum) {
+        windX = (windX / magnitude) * safeMaximum;
+        windY = (windY / magnitude) * safeMaximum;
+      }
+      return Object.freeze({ x: windX, y: windY });
+    },
+  });
+}
+
 export function combinePlaneForces({
   wind,
   control,
@@ -138,4 +259,24 @@ export function integratePlane(
     vx,
     vy,
   });
+}
+
+export function smoothPlaneHeading(
+  currentAngle,
+  velocity,
+  deltaSeconds,
+  { response = 5, minimumSpeed = 3 } = {},
+) {
+  const vx = Number(velocity?.x) || 0;
+  const vy = Number(velocity?.y) || 0;
+  if (Math.hypot(vx, vy) < Math.max(0, minimumSpeed)) {
+    return Number(currentAngle) || 0;
+  }
+  const target = Math.atan2(vy, vx);
+  const current = Number(currentAngle) || 0;
+  let delta = (target - current + Math.PI) % (Math.PI * 2);
+  if (delta < 0) delta += Math.PI * 2;
+  delta -= Math.PI;
+  const blend = 1 - Math.exp(-Math.max(0, response) * Math.max(0, deltaSeconds));
+  return current + delta * blend;
 }

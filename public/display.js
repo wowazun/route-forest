@@ -9,6 +9,7 @@ import {
   drawFog,
   drawMessage,
   drawPaperPlane,
+  drawPlaneWind,
   drawRouteHighlight,
   drawRoutePath,
   drawTree,
@@ -22,6 +23,13 @@ import {
   messagePoseAt,
   messageStateAt,
 } from "./message-art.js";
+import {
+  combinePlaneForces,
+  createTreeWindIndex,
+  createWindField,
+  integratePlane,
+  smoothPlaneHeading,
+} from "./flow-field.js";
 import { createSimulation } from "./simulator-scenarios.js";
 import { visualStyle } from "./visual-style.js";
 
@@ -56,6 +64,8 @@ const isPerformance = searchParameters.has("performance");
 const simulationScenario = searchParameters.get("simulation");
 const isSimulation = Boolean(simulationScenario);
 const palette = visualStyle.palette;
+const planePhysics = visualStyle.physics.plane;
+const windField = createWindField(visualStyle.physics.wind);
 
 const fogTexture = createFogTexture(
   document.createElement("canvas"),
@@ -84,6 +94,11 @@ const state = {
   treeLayerDirty: true,
   treeLayerCacheKey: "",
   birdVisuals: new Map(),
+  planeControls: new Map(),
+  routeRegistry: new Map(),
+  windIndex: createTreeWindIndex(),
+  windIndexDirty: true,
+  lastWindIndexAt: 0,
 };
 
 function clampedParameter(name, fallback, minimum, maximum) {
@@ -152,6 +167,7 @@ function ensureTree(node) {
   };
   state.trees.set(node.nodeId, tree);
   state.treeLayerDirty = true;
+  state.windIndexDirty = true;
   updateCounters();
   return tree;
 }
@@ -168,6 +184,7 @@ function addTreeMemory(tree, amount = 1, immediate = false) {
   tree.targetSize = Math.min(58, 17 + Math.log2(tree.count + 1) * 8);
   if (immediate) tree.size = tree.targetSize;
   state.treeLayerDirty = true;
+  state.windIndexDirty = true;
 }
 
 function buildRoute(sequence, immediate = false) {
@@ -197,12 +214,15 @@ function buildRoute(sequence, immediate = false) {
   }
 
   if (waypoints.length === 0) return;
-  state.pendingFlights.push({
+  const route = {
     id: sequence.sequenceId,
     waypoints,
     addressFamily: sequence.addressFamily,
     termination: sequence.termination,
-  });
+    registeredAt: performance.now(),
+  };
+  state.routeRegistry.set(sequence.sequenceId, route);
+  state.pendingFlights.push(route);
 }
 
 function ingestObservation(observation, { immediate = false } = {}) {
@@ -345,6 +365,8 @@ function releasePlane(letter, now) {
     controlBlend: prefersReducedMotion ? 1 : 0,
     life: isSimulation ? 20_000 : visualStyle.motion.planeFlightMs,
     phase: (hashText(letter.flightId) % 100) / 20,
+    heading: 0,
+    wind: { x: 0, y: 0 },
   });
 }
 
@@ -500,6 +522,24 @@ function updateEffects(now, deltaSeconds) {
   );
 }
 
+function refreshWindIndex(now) {
+  if (
+    !state.windIndexDirty ||
+    now - state.lastWindIndexAt < 500
+  ) {
+    return;
+  }
+  state.windIndex = createTreeWindIndex({
+    trees: [...state.trees.values()].map((tree) => ({
+      ...treePoint(tree),
+      size: tree.size,
+      seed: tree.nodeId,
+    })),
+  });
+  state.windIndexDirty = false;
+  state.lastWindIndexAt = now;
+}
+
 function updateDiagnostics(now) {
   if (now - state.lastDiagnosticsAt < 100) return;
   state.lastDiagnosticsAt = now;
@@ -522,6 +562,8 @@ function updateDiagnostics(now) {
   exhibition.dataset.highlights = String(state.highlights.length);
   exhibition.dataset.planes = String(state.planes.length);
   exhibition.dataset.fogs = String(state.fogs.length);
+  exhibition.dataset.controllerInputs = String(state.planeControls.size);
+  exhibition.dataset.windTrees = String(state.windIndex.size);
 }
 
 function updateScene(now, deltaSeconds) {
@@ -533,10 +575,18 @@ function updateScene(now, deltaSeconds) {
       (tree.targetSize - tree.size) * Math.min(1, deltaSeconds * 2.6);
     if (Math.abs(tree.size - previousSize) > 0.01) {
       state.treeLayerDirty = true;
+      state.windIndexDirty = true;
     }
   }
+  refreshWindIndex(now);
   state.fogs = state.fogs.filter((fog) => now - fog.bornAt < fog.life);
   state.planes = state.planes.filter((plane) => now - plane.bornAt < plane.life);
+  for (const [routeId, route] of state.routeRegistry) {
+    if (now - route.registeredAt > 900_000) {
+      state.routeRegistry.delete(routeId);
+      state.planeControls.delete(routeId);
+    }
+  }
 
   for (const plane of state.planes) {
     const controllableAt = plane.controllableAt ?? plane.bornAt;
@@ -545,15 +595,45 @@ function updateScene(now, deltaSeconds) {
         ? 1
         : Math.max(0, Math.min(1, (now - controllableAt) / 620));
     plane.controlBlend = controlBlend;
-    const wind = Math.sin(plane.y * 0.012 + now * 0.00035 + plane.phase);
-    plane.vx += wind * deltaSeconds * 5 * controlBlend;
-    plane.vy +=
-      Math.cos(plane.x * 0.008 + now * 0.00028) *
-      deltaSeconds *
-      3 *
-      controlBlend;
-    plane.x += plane.vx * deltaSeconds * controlBlend;
-    plane.y += plane.vy * deltaSeconds * controlBlend;
+    const controlState = state.planeControls.get(plane.flightId);
+    const control =
+      controlState &&
+      now - controlState.receivedAt <= planePhysics.inputTimeoutMs
+        ? controlState
+        : { x: 0, y: 0 };
+    plane.wind = windField.sample(
+      plane.x,
+      plane.y,
+      now / 1_000 + plane.phase,
+      state.windIndex,
+    );
+    if (controlBlend > 0) {
+      const forces = combinePlaneForces({
+        wind: plane.wind,
+        control,
+        windStrength: planePhysics.windStrength * controlBlend,
+        controlStrength: planePhysics.controlStrength * controlBlend,
+      });
+      const integrated = integratePlane(
+        plane,
+        forces.totalForce,
+        deltaSeconds,
+        {
+          drag: planePhysics.drag,
+          maxSpeed: planePhysics.maxSpeed,
+        },
+      );
+      plane.x = integrated.x;
+      plane.y = integrated.y;
+      plane.vx = integrated.vx;
+      plane.vy = integrated.vy;
+      plane.heading = smoothPlaneHeading(
+        plane.heading,
+        integrated,
+        deltaSeconds,
+        { response: planePhysics.headingResponse },
+      );
+    }
     if (plane.looping) {
       if (plane.x > state.width + 24) plane.x = -24;
       if (plane.x < -24) plane.x = state.width + 24;
@@ -680,10 +760,19 @@ function drawLetter(letter, now) {
 
 function drawPlane(plane, now) {
   const age = (now - plane.bornAt) / plane.life;
+  drawPlaneWind(context, {
+    x: plane.x,
+    y: plane.y,
+    wind: plane.wind,
+    alpha: 0.12 * (plane.controlBlend ?? 1),
+  });
   drawPaperPlane(context, {
     x: plane.x,
     y: plane.y,
-    angle: Math.atan2(plane.vy, plane.vx),
+    angle:
+      Number.isFinite(plane.heading)
+        ? plane.heading
+        : Math.atan2(plane.vy, plane.vx),
     alpha: Math.min(1, (1 - age) * 2.5),
     controllable: plane.controlBlend ?? 1,
     time: now,
@@ -899,6 +988,7 @@ function resize() {
   treeLayerCanvas.width = canvas.width;
   treeLayerCanvas.height = canvas.height;
   state.treeLayerDirty = true;
+  state.windIndexDirty = true;
   context.setTransform(
     state.pixelRatio,
     0,
@@ -953,6 +1043,46 @@ function connectLiveEvents() {
       ingestObservation(payload.observation);
     } catch {
       setConnection("", "データを確認しています");
+    }
+  });
+  source.addEventListener("plane-control", (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      if (
+        typeof payload.measurementId !== "string" ||
+        typeof payload.x !== "number" ||
+        typeof payload.y !== "number"
+      ) {
+        return;
+      }
+      state.planeControls.set(payload.measurementId, {
+        x: Math.max(-1, Math.min(1, payload.x)),
+        y: Math.max(-1, Math.min(1, payload.y)),
+        sequence: payload.sequence,
+        receivedAt: performance.now(),
+      });
+    } catch {
+      // Invalid controller events are ignored without disturbing the artwork.
+    }
+  });
+  source.addEventListener("route-highlight", (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      const route = state.routeRegistry.get(payload.measurementId);
+      if (!route) return;
+      const now = performance.now();
+      state.highlights.push({
+        flightId: payload.measurementId,
+        points: waypointPositions(route).map((point) => ({
+          x: point.x,
+          y: point.y,
+          source: { kind: point.source.kind },
+        })),
+        bornAt: now,
+        life: 4_000,
+      });
+    } catch {
+      // Invalid highlight events are ignored.
     }
   });
 }
@@ -1204,6 +1334,18 @@ window.__routeForestDisplay = Object.freeze({
     highlights: state.highlights.length,
     planes: state.planes.length,
     fogs: state.fogs.length,
+    controllerInputs: state.planeControls.size,
+    windTrees: state.windIndex.size,
+    plane: state.planes[0]
+      ? {
+          flightId: state.planes[0].flightId,
+          x: state.planes[0].x,
+          y: state.planes[0].y,
+          vx: state.planes[0].vx,
+          vy: state.planes[0].vy,
+          wind: { ...state.planes[0].wind },
+        }
+      : null,
   }),
 });
 
