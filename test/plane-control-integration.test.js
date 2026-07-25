@@ -13,8 +13,8 @@ test("connects the mobile controller and display through owned server events", a
 
   assert.match(page, /id="controller-pad"/);
   assert.match(page, /class="controller-pad-face"/);
-  assert.match(page, /styles\.css\?v=3/);
-  assert.match(page, /app\.js\?v=3/);
+  assert.match(page, /styles\.css\?v=4/);
+  assert.match(page, /app\.js\?v=4/);
   assert.match(page, /id="controller-color-swatch"/);
   assert.match(page, /id="route-highlight-button"/);
   assert.match(app, /authorization: `Bearer/);
@@ -23,6 +23,8 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(app, /setInterval\(\(\) => \{\s*sendControllerInput/);
   assert.match(app, /"touchstart"/);
   assert.match(app, /"touchmove"/);
+  assert.match(app, /controller-input-status is-sending/);
+  assert.match(app, /beginControllerPointer\("tap"/);
   assert.match(styles, /\.controller-pad\s*\{[^}]*height:\s*248px/s);
   assert.match(
     styles,

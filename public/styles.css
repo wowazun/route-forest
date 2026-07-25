@@ -915,6 +915,23 @@ h2 {
   border-block: 1px solid rgba(244, 247, 246, 0.15);
 }
 
+.controller-input-status {
+  min-height: 1.5em;
+  margin: -4px 0 14px;
+  color: rgba(244, 247, 246, 0.56);
+  font-family: var(--utility);
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+}
+
+.controller-input-status.is-sending {
+  color: var(--participant-color);
+}
+
+.controller-input-status.is-error {
+  color: var(--fault);
+}
+
 .controller-vector div {
   display: flex;
   align-items: baseline;

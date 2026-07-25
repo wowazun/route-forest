@@ -39,6 +39,9 @@ const controllerKnob = document.querySelector("#controller-knob");
 const controllerX = document.querySelector("#controller-x");
 const controllerY = document.querySelector("#controller-y");
 const controllerEnded = document.querySelector("#controller-ended");
+const controllerInputStatus = document.querySelector(
+  "#controller-input-status",
+);
 const controllerColorSwatch = document.querySelector(
   "#controller-color-swatch",
 );
@@ -56,6 +59,7 @@ let controllerSequence = 0;
 let controllerCanControl = false;
 let controllerRouteReady = false;
 let lastControllerSendAt = 0;
+let suppressControllerClickUntil = 0;
 const CONTROLLER_STORAGE_KEY = "route-forest-controller-v1";
 
 function setPanel(name) {
@@ -173,6 +177,7 @@ async function sendControllerInput({ force = false } = {}) {
   if (!force && now - lastControllerSendAt < 80) return;
   lastControllerSendAt = now;
   controllerSequence += 1;
+  const input = { ...controllerVector };
   try {
     const response = await fetch(
       `/api/controller/sessions/${controllerCredentials.sessionId}/input`,
@@ -183,8 +188,8 @@ async function sendControllerInput({ force = false } = {}) {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          x: controllerVector.x,
-          y: controllerVector.y,
+          x: input.x,
+          y: input.y,
           sequence: controllerSequence,
           inputAt: now,
         }),
@@ -192,9 +197,27 @@ async function sendControllerInput({ force = false } = {}) {
       },
     );
     if (response.status === 401 || response.status === 409) {
+      controllerInputStatus.className =
+        "controller-input-status is-error";
+      controllerInputStatus.textContent =
+        response.status === 409
+          ? "紙飛行機の準備完了を待っています"
+          : "操作セッションが終了しました";
       await updateControllerStatus();
+      return;
     }
-  } catch {
+    if (response.status === 429) return;
+    await readResponse(response);
+    controllerInputStatus.className =
+      "controller-input-status is-sending";
+    controllerInputStatus.textContent =
+      input.x === 0 && input.y === 0
+        ? "入力を離しました。風に流されています"
+        : `入力送信済み X ${input.x.toFixed(2)} / Y ${input.y.toFixed(2)}`;
+  } catch (error) {
+    controllerInputStatus.className =
+      "controller-input-status is-error";
+    controllerInputStatus.textContent = "入力を再送しています";
     setControllerConnection("is-reconnecting", "再接続中");
   }
 }
@@ -240,6 +263,17 @@ function applyControllerStatus(status) {
     "aria-disabled",
     String(!controllerCanControl),
   );
+  if (!controllerCanControl) {
+    controllerInputStatus.className = "controller-input-status";
+    controllerInputStatus.textContent =
+      phase === "ended"
+        ? "操作セッションが終了しました"
+        : "紙飛行機の準備を待っています";
+  } else if (controllerPointer === null) {
+    controllerInputStatus.className = "controller-input-status";
+    controllerInputStatus.textContent =
+      "円を押したまま動かしてください";
+  }
   routeHighlightButton.disabled = !controllerRouteReady;
   controllerEnded.hidden = phase !== "ended";
   if (phase === "ended") {
@@ -580,21 +614,39 @@ websiteInput.addEventListener("input", () => {
 });
 
 function beginControllerPointer(pointerId, clientX, clientY) {
-  if (!controllerCanControl) return;
+  if (!controllerCanControl) {
+    controllerInputStatus.className =
+      "controller-input-status is-error";
+    controllerInputStatus.textContent =
+      "紙飛行機の準備完了を待っています";
+    return false;
+  }
   controllerPointer = pointerId;
+  suppressControllerClickUntil = Date.now() + 450;
   controllerPad.classList.add("is-active");
+  controllerInputStatus.className =
+    "controller-input-status is-sending";
+  controllerInputStatus.textContent = "入力中";
   setControllerFromPointer(clientX, clientY);
   clearInterval(controllerInputTimer);
   controllerInputTimer = setInterval(() => {
     sendControllerInput();
   }, 90);
+  return true;
 }
 
 if ("PointerEvent" in window) {
   controllerPad.addEventListener("pointerdown", (event) => {
-    if (!controllerCanControl) return;
     event.preventDefault();
-    beginControllerPointer(event.pointerId, event.clientX, event.clientY);
+    if (
+      !beginControllerPointer(
+        event.pointerId,
+        event.clientX,
+        event.clientY,
+      )
+    ) {
+      return;
+    }
     try {
       controllerPad.setPointerCapture(event.pointerId);
     } catch {
@@ -612,46 +664,49 @@ if ("PointerEvent" in window) {
   controllerPad.addEventListener("pointercancel", (event) => {
     releaseControllerPointer(event.pointerId);
   });
-} else {
-  controllerPad.addEventListener(
-    "touchstart",
-    (event) => {
-      if (!controllerCanControl || controllerPointer !== null) return;
-      const touch = event.changedTouches[0];
-      if (!touch) return;
-      event.preventDefault();
-      beginControllerPointer(
-        `touch-${touch.identifier}`,
-        touch.clientX,
-        touch.clientY,
-      );
-    },
-    { passive: false },
-  );
-  controllerPad.addEventListener(
-    "touchmove",
-    (event) => {
-      const touch = Array.from(event.touches).find(
-        (item) => `touch-${item.identifier}` === controllerPointer,
-      );
-      if (!touch) return;
-      event.preventDefault();
-      setControllerFromPointer(touch.clientX, touch.clientY);
-    },
-    { passive: false },
-  );
-  controllerPad.addEventListener("touchend", (event) => {
-    const touch = Array.from(event.changedTouches).find(
+}
+
+controllerPad.addEventListener(
+  "touchstart",
+  (event) => {
+    if (controllerPointer !== null) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    event.preventDefault();
+    beginControllerPointer(
+      `touch-${touch.identifier}`,
+      touch.clientX,
+      touch.clientY,
+    );
+  },
+  { passive: false },
+);
+controllerPad.addEventListener(
+  "touchmove",
+  (event) => {
+    const touch = Array.from(event.touches).find(
       (item) => `touch-${item.identifier}` === controllerPointer,
     );
-    if (touch) releaseControllerPointer(`touch-${touch.identifier}`);
-  });
-  controllerPad.addEventListener("touchcancel", (event) => {
-    const touch = Array.from(event.changedTouches).find(
-      (item) => `touch-${item.identifier}` === controllerPointer,
-    );
-    if (touch) releaseControllerPointer(`touch-${touch.identifier}`);
-  });
+    if (!touch) return;
+    event.preventDefault();
+    setControllerFromPointer(touch.clientX, touch.clientY);
+  },
+  { passive: false },
+);
+controllerPad.addEventListener("touchend", (event) => {
+  const touch = Array.from(event.changedTouches).find(
+    (item) => `touch-${item.identifier}` === controllerPointer,
+  );
+  if (touch) releaseControllerPointer(`touch-${touch.identifier}`);
+});
+controllerPad.addEventListener("touchcancel", (event) => {
+  const touch = Array.from(event.changedTouches).find(
+    (item) => `touch-${item.identifier}` === controllerPointer,
+  );
+  if (touch) releaseControllerPointer(`touch-${touch.identifier}`);
+});
+
+if (!("PointerEvent" in window)) {
   controllerPad.addEventListener("mousedown", (event) => {
     if (!controllerCanControl || controllerPointer !== null) return;
     event.preventDefault();
@@ -666,6 +721,16 @@ if ("PointerEvent" in window) {
     releaseControllerPointer("mouse");
   });
 }
+controllerPad.addEventListener("click", (event) => {
+  if (
+    Date.now() < suppressControllerClickUntil ||
+    controllerPointer !== null
+  ) {
+    return;
+  }
+  if (!beginControllerPointer("tap", event.clientX, event.clientY)) return;
+  window.setTimeout(() => releaseControllerPointer("tap"), 180);
+});
 window.addEventListener("blur", () => {
   if (controllerPointer !== null) {
     releaseControllerPointer(controllerPointer);

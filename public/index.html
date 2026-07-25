@@ -9,7 +9,7 @@
       content="情報通信路を観測し、匿名化された経路として体験するインタラクティブ作品。"
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css?v=3" />
+    <link rel="stylesheet" href="/styles.css?v=4" />
     <title>情報通信路 — Route Forest</title>
   </head>
   <body>
@@ -270,6 +270,13 @@
                 <div><dt>X</dt><dd id="controller-x">0.00</dd></div>
                 <div><dt>Y</dt><dd id="controller-y">0.00</dd></div>
               </dl>
+              <p
+                id="controller-input-status"
+                class="controller-input-status"
+                aria-live="polite"
+              >
+                紙飛行機の準備を待っています
+              </p>
               <button
                 id="route-highlight-button"
                 class="route-highlight-action"
@@ -324,6 +331,6 @@
         この体験にはJavaScriptが必要です。ブラウザの設定を確認してください。
       </p>
     </noscript>
-    <script type="module" src="/app.js?v=3"></script>
+    <script type="module" src="/app.js?v=4"></script>
   </body>
 </html>
