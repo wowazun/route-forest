@@ -373,6 +373,7 @@ function releasePlane(letter, now) {
       }
     : palette;
   state.planes.push({
+    flightId: letter.flightId,
     x: letter.x + pose.xOffset,
     y: letter.y + pose.yOffset,
     vx: 24 + (hashText(letter.flightId) % 25),

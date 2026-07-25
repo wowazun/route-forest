@@ -3,11 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("connects the mobile controller and display through owned server events", async () => {
-  const [app, page, styles, display, server] = await Promise.all([
+  const [app, page, styles, display, displayPage, server] = await Promise.all([
     readFile(new URL("../public/app.js", import.meta.url), "utf8"),
     readFile(new URL("../public/index.html", import.meta.url), "utf8"),
     readFile(new URL("../public/styles.css", import.meta.url), "utf8"),
     readFile(new URL("../public/display.js", import.meta.url), "utf8"),
+    readFile(new URL("../public/display.html", import.meta.url), "utf8"),
     readFile(new URL("../src/http/server.js", import.meta.url), "utf8"),
   ]);
 
@@ -35,6 +36,11 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /source\.addEventListener\("controller-ended"/);
   assert.match(display, /Number\.POSITIVE_INFINITY/);
   assert.match(display, /paper: letter\.controller\.color/);
+  assert.match(
+    display,
+    /state\.planes\.push\(\{\s*flightId: letter\.flightId,/,
+  );
+  assert.match(displayPage, /display\.js\?v=13/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,
