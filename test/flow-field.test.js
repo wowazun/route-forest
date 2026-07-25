@@ -8,6 +8,7 @@ import {
   integratePlane,
   smoothPlaneHeading,
 } from "../public/flow-field.js";
+import { visualStyle } from "../public/visual-style.js";
 
 test("creates a deterministic, time-varying curl field", () => {
   const first = createCurlNoise({ seed: 411 });
@@ -56,6 +57,10 @@ test("limits tree lookup and keeps heading stable near zero speed", () => {
     smoothPlaneHeading(0, { x: 0, y: 20 }, 0.1),
     0,
   );
+});
+
+test("keeps production paper-plane heading highly responsive", () => {
+  assert.ok(visualStyle.physics.plane.headingResponse >= 30);
 });
 
 test("keeps the sampled field approximately divergence free", () => {

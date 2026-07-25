@@ -48,7 +48,7 @@ export const visualStyle = deepFreeze({
       controlStrength: 80,
       drag: 1.15,
       maxSpeed: 230,
-      headingResponse: 8,
+      headingResponse: 36,
       inputTimeoutMs: 360,
     },
     wind: {
