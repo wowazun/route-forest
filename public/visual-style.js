@@ -34,7 +34,8 @@ export const visualStyle = deepFreeze({
   motion: {
     seedDropMs: 720,
     featherDriftMs: 4_200,
-    letterFoldMs: 1_350,
+    letterFoldMs: 3_200,
+    planeControlDelayMs: 520,
     routeHighlightMs: 7_500,
     fogBaseMs: 8_000,
     planeFlightMs: 11_000,
@@ -92,14 +93,20 @@ export const assetContract = deepFreeze({
       anchor: "center",
       forwardAxis: "+x",
       nominalSize: [20, 14],
-      requiredStates: ["closed", "folding"],
+      requiredStates: [
+        "dropping",
+        "closed",
+        "opening",
+        "readable",
+        "folding",
+      ],
       replaceWith: ["procedural", "svg-path", "rive"],
     },
     plane: {
       anchor: "fold-center",
       forwardAxis: "+x",
       nominalSize: [29, 16],
-      requiredStates: ["release", "flight"],
+      requiredStates: ["plane", "controllable", "flight"],
       replaceWith: ["procedural", "svg-path", "sprite", "rive"],
     },
     fog: {

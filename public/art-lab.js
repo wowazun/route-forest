@@ -16,6 +16,12 @@ import {
   fogDimensions,
 } from "./fog-art.js";
 import { strokeSmoothRoute } from "./display-art.js";
+import {
+  drawLegacyMessageArt,
+  drawMessageArt,
+  messageProgressForState,
+  messageStateAt,
+} from "./message-art.js";
 import { visualStyle } from "./visual-style.js";
 
 const proofs = document.querySelector("#proofs");
@@ -69,6 +75,26 @@ const fogOutputs = {
   fade: document.querySelector("#fog-fade-output"),
   bird: document.querySelector("#fog-bird-output"),
 };
+const messagePreset = document.querySelector("#message-preset");
+const messageProgress = document.querySelector("#message-progress");
+const messageDrop = document.querySelector("#message-drop");
+const messageOpening = document.querySelector("#message-opening");
+const messageReadable = document.querySelector("#message-readable");
+const messageFolding = document.querySelector("#message-folding");
+const messageGlow = document.querySelector("#message-glow");
+const messageSize = document.querySelector("#message-size");
+const messageContrast = document.querySelector("#message-contrast");
+const messageReplay = document.querySelector("#message-replay");
+const messageOutputs = {
+  progress: document.querySelector("#message-progress-output"),
+  drop: document.querySelector("#message-drop-output"),
+  opening: document.querySelector("#message-opening-output"),
+  readable: document.querySelector("#message-readable-output"),
+  folding: document.querySelector("#message-folding-output"),
+  glow: document.querySelector("#message-glow-output"),
+  size: document.querySelector("#message-size-output"),
+  contrast: document.querySelector("#message-contrast-output"),
+};
 const fogRenderer = createFogRenderer({
   createCanvas: () => document.createElement("canvas"),
 });
@@ -89,6 +115,7 @@ const modes = new Set([
   "bird-silhouettes",
   "adopted-wing",
   "fog-lab",
+  "message-lab",
 ]);
 let mode = modes.has(searchParameters.get("mode"))
   ? searchParameters.get("mode")
@@ -102,6 +129,7 @@ let selectedVariant = variants.some(
 let lastFrame = performance.now();
 let sceneTime = 2_400;
 let flapAutomatic = true;
+let messageAutomatic = false;
 
 function clamp(value, minimum = 0, maximum = 1) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -142,6 +170,23 @@ const FOG_PRESETS = Object.freeze({
   compare: Object.freeze({ hops: 3, length: 100, height: 100, opacity: 46, layers: 3, void: 34, speed: 100, bird: 55, scene: "compare", progress: 0.5 }),
 });
 
+const MESSAGE_PRESETS = Object.freeze({
+  closed: Object.freeze({ progress: messageProgressForState("closed", 0.5) }),
+  dropping: Object.freeze({ progress: messageProgressForState("dropping", 0.58) }),
+  opening: Object.freeze({ progress: messageProgressForState("opening", 0.38) }),
+  open: Object.freeze({ progress: messageProgressForState("readable", 0.05) }),
+  readable: Object.freeze({ progress: messageProgressForState("readable", 0.72) }),
+  "fold-start": Object.freeze({ progress: messageProgressForState("folding", 0.12) }),
+  "fold-mid": Object.freeze({ progress: messageProgressForState("folding", 0.52) }),
+  "plane-near": Object.freeze({ progress: messageProgressForState("folding", 0.88) }),
+  plane: Object.freeze({ progress: messageProgressForState("plane", 0.55) }),
+  controllable: Object.freeze({ progress: messageProgressForState("controllable", 0.56) }),
+  sequence: Object.freeze({ automatic: true }),
+  "fog-sequence": Object.freeze({ automatic: true, fromFog: true }),
+  compare: Object.freeze({ compare: true, progress: messageProgressForState("folding", 0.52) }),
+  sizes: Object.freeze({ sizes: true, progress: messageProgressForState("readable", 0.72) }),
+});
+
 function updateBirdControlOutputs() {
   birdOutputs.flap.textContent = flapAutomatic
     ? "AUTO"
@@ -166,6 +211,60 @@ function updateFogControlOutputs() {
   fogOutputs.hold.textContent = `${fogHold.value}ms`;
   fogOutputs.fade.textContent = `${fogFade.value}ms`;
   fogOutputs.bird.textContent = `${fogBird.value}%`;
+}
+
+function updateMessageControlOutputs(progressValue = Number(messageProgress.value) / 1000) {
+  messageOutputs.progress.textContent = `${Math.round(progressValue * 100)}%`;
+  messageOutputs.drop.textContent = `${messageDrop.value}%`;
+  messageOutputs.opening.textContent = `${messageOpening.value}ms`;
+  messageOutputs.readable.textContent = `${messageReadable.value}ms`;
+  messageOutputs.folding.textContent = `${messageFolding.value}ms`;
+  messageOutputs.glow.textContent = `${messageGlow.value}%`;
+  messageOutputs.size.textContent = `${messageSize.value}%`;
+  messageOutputs.contrast.textContent = `${messageContrast.value}%`;
+}
+
+function messageSequenceProgress(time) {
+  const segments = [
+    { state: "dropping", duration: 700 / (Number(messageDrop.value) / 100) },
+    { state: "closed", duration: 260 },
+    { state: "opening", duration: Number(messageOpening.value) },
+    { state: "readable", duration: Number(messageReadable.value) },
+    { state: "folding", duration: Number(messageFolding.value) },
+    { state: "plane", duration: 360 },
+    { state: "controllable", duration: 620 },
+  ];
+  const total = segments.reduce((sum, segment) => sum + segment.duration, 0);
+  let elapsed = ((time % total) + total) % total;
+  for (const segment of segments) {
+    if (elapsed <= segment.duration) {
+      return messageProgressForState(
+        segment.state,
+        elapsed / segment.duration,
+      );
+    }
+    elapsed -= segment.duration;
+  }
+  return 1;
+}
+
+function applyMessagePreset(name) {
+  const selected = MESSAGE_PRESETS[name] || MESSAGE_PRESETS.closed;
+  messagePreset.value = name in MESSAGE_PRESETS ? name : "closed";
+  messageAutomatic = Boolean(selected.automatic);
+  if (Number.isFinite(selected.progress)) {
+    messageProgress.value = String(Math.round(selected.progress * 1000));
+  }
+  if (messageAutomatic) {
+    sceneTime = 0;
+    paused = false;
+    toggleMotion.classList.remove("is-selected");
+  }
+  updateMessageControlOutputs();
+  const url = new URL(window.location.href);
+  url.searchParams.set("messagePreset", messagePreset.value);
+  window.history.replaceState({}, "", url);
+  selectedLink.href = url.pathname + url.search;
 }
 
 function applyFogPreset(name) {
@@ -378,27 +477,6 @@ function drawSharedFog(context, x, y, radius, time, options = {}) {
   });
 }
 
-function drawLabLetter(context, x, y, time) {
-  const drop = (time * 0.00032) % 1;
-  context.save();
-  context.translate(x - drop * 5, y + drop * 34);
-  context.rotate(-0.12 + drop * 0.28);
-  context.globalAlpha = 0.84 - drop * 0.28;
-  context.fillStyle = visualStyle.palette.paper;
-  context.strokeStyle = "rgba(23, 54, 61, 0.72)";
-  context.lineWidth = 0.8;
-  context.beginPath();
-  context.rect(-8, -5, 16, 10);
-  context.fill();
-  context.stroke();
-  context.beginPath();
-  context.moveTo(-8, -5);
-  context.lineTo(0, 1);
-  context.lineTo(8, -5);
-  context.stroke();
-  context.restore();
-}
-
 function drawBirdWorkbench(proof, time) {
   const { context, width, height } = proof;
   const preset = birdPreset.value;
@@ -539,7 +617,13 @@ function drawBirdWorkbench(proof, time) {
     );
   } else if (preset === "letter-drop") {
     const anchor = birdWorldAnchor({ ...anchorOptions, name: "letter" });
-    drawLabLetter(context, anchor.x, anchor.y, motionTime);
+    drawMessageArt(context, {
+      x: anchor.x,
+      y: anchor.y,
+      progress: (motionTime * 0.00018) % 0.22,
+      time: motionTime,
+      glow: 0.4,
+    });
   }
 
   context.fillStyle = "rgba(231, 238, 240, 0.42)";
@@ -922,6 +1006,129 @@ function drawTreeValidation(proof) {
   proof.article.dataset.mode = mode;
 }
 
+function drawMessageWorkbench(proof, time) {
+  const { context, width, height } = proof;
+  const presetName = messagePreset.value;
+  const preset = MESSAGE_PRESETS[presetName] || MESSAGE_PRESETS.closed;
+  const progress = messageAutomatic
+    ? messageSequenceProgress(time)
+    : Number(messageProgress.value) / 1000;
+  const scale = Number(messageSize.value) / 100;
+  const glow = Number(messageGlow.value) / 100;
+  const contrast = Number(messageContrast.value) / 100;
+  const center = { x: width * 0.5, y: height * 0.45 };
+  const visual = messageStateAt(progress);
+
+  context.save();
+  context.strokeStyle = "rgba(184, 222, 213, 0.12)";
+  context.lineWidth = 1;
+  context.setLineDash([2, 10]);
+  context.beginPath();
+  context.moveTo(width * 0.16, center.y + 44);
+  context.bezierCurveTo(
+    width * 0.34,
+    center.y + 51,
+    width * 0.68,
+    center.y + 34,
+    width * 0.84,
+    center.y + 42,
+  );
+  context.stroke();
+  context.restore();
+
+  let rendered = visual;
+  if (preset.compare) {
+    const showLegacyPlane = progress >= messageProgressForState("plane", 0);
+    drawLegacyMessageArt(context, {
+      x: width * 0.28,
+      y: center.y + 20,
+      plane: showLegacyPlane,
+      scale: scale * 1.25,
+    });
+    rendered = drawMessageArt(context, {
+      x: width * 0.69,
+      y: center.y,
+      progress,
+      scale: scale * 1.25,
+      glow,
+      contrast,
+      time,
+    });
+    context.fillStyle = "rgba(231, 238, 240, 0.42)";
+    context.font = '10px "SFMono-Regular", Consolas, monospace';
+    context.textAlign = "center";
+    context.fillText("BEFORE / OBJECT SWITCH", width * 0.28, center.y + 86);
+    context.fillText("AFTER / ONE SHEET", width * 0.69, center.y + 86);
+    context.textAlign = "start";
+  } else if (preset.sizes) {
+    const sizes = [0.7, 1, 1.35, 1.7];
+    for (let index = 0; index < sizes.length; index += 1) {
+      const itemScale = sizes[index] * scale;
+      rendered = drawMessageArt(context, {
+        x: width * ((index + 0.5) / sizes.length),
+        y: center.y + (index % 2) * 14,
+        progress,
+        scale: itemScale,
+        glow,
+        contrast,
+        time,
+      });
+    }
+  } else {
+    if (preset.fromFog) {
+      drawLegacyFogArt(context, {
+        x: center.x - 18,
+        y: center.y + 18,
+        radius: Math.min(110, width * 0.18),
+        time,
+        opacity: 0.25,
+      });
+    }
+    if (visual.state === "dropping") {
+      drawBirdArt(context, {
+        x: center.x,
+        y: center.y - 42,
+        angle: 0,
+        time,
+        flap: birdFlapAt(time, 0),
+        scale: 0.9,
+        glow: 0.32,
+        silhouette: "swallow",
+      });
+    }
+    rendered = drawMessageArt(context, {
+      x: center.x,
+      y: center.y,
+      progress,
+      scale: scale * 1.35,
+      glow,
+      contrast,
+      dropDistance: 34,
+      fromFog: Boolean(preset.fromFog),
+      time,
+    });
+  }
+
+  if (messageAutomatic) {
+    messageProgress.value = String(Math.round(progress * 1000));
+  }
+  updateMessageControlOutputs(progress);
+  context.fillStyle = "rgba(231, 238, 240, 0.42)";
+  context.font = '10px "SFMono-Regular", Consolas, monospace';
+  context.fillText(
+    `ONE SHEET / ${rendered.state.toUpperCase()} / ${Math.round(progress * 100)}%`,
+    20,
+    30,
+  );
+  proof.frameCount += 1;
+  proof.article.dataset.frames = String(proof.frameCount);
+  proof.article.dataset.mode = mode;
+  proof.article.dataset.messagePreset = presetName;
+  proof.article.dataset.messageState = rendered.state;
+  proof.article.dataset.messageProgress = progress.toFixed(3);
+  proof.article.dataset.controllable = String(rendered.state === "controllable");
+}
+
 function drawProof(proof, time) {
   const { context, width, height, variant } = proof;
   if (width <= 0 || height <= 0) return;
@@ -932,6 +1139,11 @@ function drawProof(proof, time) {
   context.fillStyle = gradient;
   context.fillRect(0, 0, width, height);
   drawWind(context, width, height, time);
+
+  if (mode === "message-lab") {
+    drawMessageWorkbench(proof, time);
+    return;
+  }
 
   if (mode === "fog-lab") {
     drawFogWorkbench(proof, time);
@@ -1075,6 +1287,7 @@ function updateModePresentation() {
       mode === "adopted-wing",
   );
   document.body.classList.toggle("is-fog-lab", mode === "fog-lab");
+  document.body.classList.toggle("is-message-lab", mode === "message-lab");
   for (const candidate of modeButtons) {
     candidate.classList.toggle("is-selected", candidate.dataset.mode === mode);
   }
@@ -1105,6 +1318,9 @@ birdSilhouette.addEventListener("change", () => {
 });
 fogPreset.addEventListener("change", () => {
   applyFogPreset(fogPreset.value);
+});
+messagePreset.addEventListener("change", () => {
+  applyMessagePreset(messagePreset.value);
 });
 birdFlap.addEventListener("input", () => {
   flapAutomatic = false;
@@ -1138,6 +1354,36 @@ for (const control of [
     fogRenderer.clear();
   });
 }
+messageProgress.addEventListener("input", () => {
+  messageAutomatic = false;
+  updateMessageControlOutputs();
+});
+for (const control of [
+  messageDrop,
+  messageOpening,
+  messageReadable,
+  messageFolding,
+  messageGlow,
+  messageSize,
+  messageContrast,
+]) {
+  control.addEventListener("input", () => {
+    updateMessageControlOutputs();
+  });
+}
+messageReplay.addEventListener("click", () => {
+  if (
+    messagePreset.value !== "sequence" &&
+    messagePreset.value !== "fog-sequence"
+  ) {
+    messagePreset.value = "sequence";
+  }
+  messageAutomatic = true;
+  sceneTime = 0;
+  paused = false;
+  toggleMotion.classList.remove("is-selected");
+  updateMessageControlOutputs(0);
+});
 toggleMotion.addEventListener("click", () => {
   paused = !paused;
   toggleMotion.textContent = paused ? "動かす" : "動きを止める";
@@ -1155,6 +1401,11 @@ applyFogPreset(
   FOG_PRESETS[searchParameters.get("fogPreset")]
     ? searchParameters.get("fogPreset")
     : "hop-three",
+);
+applyMessagePreset(
+  MESSAGE_PRESETS[searchParameters.get("messagePreset")]
+    ? searchParameters.get("messagePreset")
+    : "closed",
 );
 updateModePresentation();
 if (selectedVariant) selectVariant(selectedVariant);
@@ -1195,12 +1446,27 @@ window.__routeForestArtLab = Object.freeze({
       birdPosition: Number(fogBird.value),
       cacheEntries: fogRenderer.cacheSize(),
     },
+    message: {
+      preset: messagePreset.value,
+      progress: Number(messageProgress.value) / 1000,
+      state: messageStateAt(Number(messageProgress.value) / 1000).state,
+      automatic: messageAutomatic,
+      dropSpeed: Number(messageDrop.value),
+      openingMs: Number(messageOpening.value),
+      readableMs: Number(messageReadable.value),
+      foldingMs: Number(messageFolding.value),
+      glow: Number(messageGlow.value),
+      size: Number(messageSize.value),
+      contrast: Number(messageContrast.value),
+    },
     proofs: proofStates.map((proof) => ({
       id: proof.variant.id,
       frames: proof.frameCount,
       trees: Number(proof.article.dataset.trees || 0),
       fogs: Number(proof.article.dataset.fogs || 0),
       fogPreset: proof.article.dataset.fogPreset || null,
+      messagePreset: proof.article.dataset.messagePreset || null,
+      messageState: proof.article.dataset.messageState || null,
     })),
   }),
 });

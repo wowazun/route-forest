@@ -56,6 +56,9 @@
           <button type="button" data-mode="fog-lab">
             FOG LAB
           </button>
+          <button type="button" data-mode="message-lab">
+            MESSAGE LAB
+          </button>
         </fieldset>
         <label>
           <span>TREE AGE <output id="tree-age-output">72</output></span>
@@ -194,6 +197,63 @@
           <span>BIRD POSITION <output id="fog-bird-output">55%</output></span>
           <input id="fog-bird" type="range" min="0" max="100" value="55" />
         </label>
+      </section>
+
+      <section id="message-controls" class="message-controls" aria-label="手紙から紙飛行機への変形確認">
+        <label class="message-preset">
+          <span>MESSAGE PRESET</span>
+          <select id="message-preset">
+            <option value="closed">01 CLOSED LETTER</option>
+            <option value="dropping">02 DROPPING</option>
+            <option value="opening">03 OPENING</option>
+            <option value="open">04 OPEN PAPER</option>
+            <option value="readable">05 READABLE LINES</option>
+            <option value="fold-start">06 FOLD START</option>
+            <option value="fold-mid">07 FOLD MIDDLE</option>
+            <option value="plane-near">08 NEARLY PLANE</option>
+            <option value="plane">09 PAPER PLANE</option>
+            <option value="controllable">10 CONTROLLABLE</option>
+            <option value="sequence">11 FULL SEQUENCE</option>
+            <option value="fog-sequence">12 FROM FOG</option>
+            <option value="compare">13 BEFORE / AFTER</option>
+            <option value="sizes">14 MULTIPLE SIZES</option>
+          </select>
+        </label>
+        <label>
+          <span>PROGRESS <output id="message-progress-output">18%</output></span>
+          <input id="message-progress" type="range" min="0" max="1000" value="180" />
+        </label>
+        <label>
+          <span>DROP SPEED <output id="message-drop-output">100%</output></span>
+          <input id="message-drop" type="range" min="50" max="180" value="100" />
+        </label>
+        <label>
+          <span>OPENING <output id="message-opening-output">700ms</output></span>
+          <input id="message-opening" type="range" min="300" max="1400" step="50" value="700" />
+        </label>
+        <label>
+          <span>READABLE <output id="message-readable-output">850ms</output></span>
+          <input id="message-readable" type="range" min="400" max="1800" step="50" value="850" />
+        </label>
+        <label>
+          <span>FOLDING <output id="message-folding-output">1050ms</output></span>
+          <input id="message-folding" type="range" min="500" max="2000" step="50" value="1050" />
+        </label>
+        <label>
+          <span>GLOW <output id="message-glow-output">38%</output></span>
+          <input id="message-glow" type="range" min="0" max="100" value="38" />
+        </label>
+        <label>
+          <span>SIZE <output id="message-size-output">120%</output></span>
+          <input id="message-size" type="range" min="60" max="180" value="120" />
+        </label>
+        <label>
+          <span>SURFACE CONTRAST <output id="message-contrast-output">28%</output></span>
+          <input id="message-contrast" type="range" min="0" max="70" value="28" />
+        </label>
+        <button id="message-replay" class="message-replay" type="button">
+          REPLAY SEQUENCE
+        </button>
       </section>
 
       <section id="proofs" class="proofs" aria-label="鳥と木の造形比較"></section>

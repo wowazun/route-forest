@@ -1,6 +1,10 @@
 import { visualStyle } from "./visual-style.js";
 import { drawBirdArt } from "./bird-art.js";
 import {
+  drawMessageArt,
+  drawPaperPlaneArt,
+} from "./message-art.js";
+import {
   drawTreeArt,
   getTreeArtCacheKey,
 } from "./tree-art.js";
@@ -222,6 +226,14 @@ export function drawBird(
     phase,
     silhouette,
   });
+}
+
+export function drawMessage(context, options) {
+  return drawMessageArt(context, options);
+}
+
+export function drawPaperPlane(context, options) {
+  return drawPaperPlaneArt(context, options);
 }
 
 export function drawRoutePath(

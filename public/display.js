@@ -1,6 +1,5 @@
 import { createBirdSequence } from "./experience-contract.js";
 import {
-  letterTransform,
   lifecycleProgress,
   shouldReleaseFeather,
   visibleRouteSegments,
@@ -8,6 +7,8 @@ import {
 import {
   createFogTexture,
   drawFog,
+  drawMessage,
+  drawPaperPlane,
   drawRouteHighlight,
   drawRoutePath,
   drawTree,
@@ -17,6 +18,10 @@ import {
   birdWorldAnchor,
   smoothBirdHeading,
 } from "./bird-art.js";
+import {
+  messagePoseAt,
+  messageStateAt,
+} from "./message-art.js";
 import { createSimulation } from "./simulator-scenarios.js";
 import { visualStyle } from "./visual-style.js";
 
@@ -328,12 +333,16 @@ function releaseFeather(flight, now) {
 }
 
 function releasePlane(letter, now) {
+  const pose = messagePoseAt(1);
   state.planes.push({
-    x: letter.x,
-    y: letter.y + 22,
+    x: letter.x + pose.xOffset,
+    y: letter.y + pose.yOffset,
     vx: 24 + (hashText(letter.flightId) % 25),
     vy: -8,
     bornAt: now,
+    controllableAt:
+      now + (prefersReducedMotion ? 0 : visualStyle.motion.planeControlDelayMs),
+    controlBlend: prefersReducedMotion ? 1 : 0,
     life: isSimulation ? 20_000 : visualStyle.motion.planeFlightMs,
     phase: (hashText(letter.flightId) % 100) / 20,
   });
@@ -394,6 +403,7 @@ function completeFlight(flight, now) {
     y: letterAnchor.y,
     bornAt: now,
     life: prefersReducedMotion ? 180 : visualStyle.motion.letterFoldMs,
+    fromFog: last.source?.kind === "fog",
     released: false,
   });
 }
@@ -499,6 +509,16 @@ function updateDiagnostics(now) {
   exhibition.dataset.seeds = String(state.seeds.length);
   exhibition.dataset.feathers = String(state.feathers.length);
   exhibition.dataset.letters = String(state.letters.length);
+  const activeLetter = state.letters[0];
+  exhibition.dataset.messageState = activeLetter
+    ? messageStateAt(
+        lifecycleProgress(now, activeLetter.bornAt, activeLetter.life),
+      ).state
+    : state.planes.length > 0
+      ? (state.planes[0].controlBlend ?? 1) >= 1
+        ? "controllable"
+        : "plane"
+      : "idle";
   exhibition.dataset.highlights = String(state.highlights.length);
   exhibition.dataset.planes = String(state.planes.length);
   exhibition.dataset.fogs = String(state.fogs.length);
@@ -519,11 +539,21 @@ function updateScene(now, deltaSeconds) {
   state.planes = state.planes.filter((plane) => now - plane.bornAt < plane.life);
 
   for (const plane of state.planes) {
+    const controllableAt = plane.controllableAt ?? plane.bornAt;
+    const controlBlend =
+      plane.controlBlend === 1
+        ? 1
+        : Math.max(0, Math.min(1, (now - controllableAt) / 620));
+    plane.controlBlend = controlBlend;
     const wind = Math.sin(plane.y * 0.012 + now * 0.00035 + plane.phase);
-    plane.vx += wind * deltaSeconds * 5;
-    plane.vy += Math.cos(plane.x * 0.008 + now * 0.00028) * deltaSeconds * 3;
-    plane.x += plane.vx * deltaSeconds;
-    plane.y += plane.vy * deltaSeconds;
+    plane.vx += wind * deltaSeconds * 5 * controlBlend;
+    plane.vy +=
+      Math.cos(plane.x * 0.008 + now * 0.00028) *
+      deltaSeconds *
+      3 *
+      controlBlend;
+    plane.x += plane.vx * deltaSeconds * controlBlend;
+    plane.y += plane.vy * deltaSeconds * controlBlend;
     if (plane.looping) {
       if (plane.x > state.width + 24) plane.x = -24;
       if (plane.x < -24) plane.x = state.width + 24;
@@ -638,52 +668,26 @@ function drawFeather(feather, now) {
 
 function drawLetter(letter, now) {
   const progress = lifecycleProgress(now, letter.bornAt, letter.life);
-  const transform = letterTransform(progress);
-
-  context.save();
-  context.translate(letter.x, letter.y + transform.yOffset);
-  context.rotate(transform.angle);
-  context.fillStyle = palette.paper;
-  context.strokeStyle = "rgba(23, 54, 61, 0.72)";
-  context.lineWidth = 0.8;
-  context.shadowColor = palette.paper;
-  context.shadowBlur = 14 * (1 - progress * 0.7);
-  context.beginPath();
-  context.moveTo(transform.points[0].x, transform.points[0].y);
-  for (const point of transform.points.slice(1)) {
-    context.lineTo(point.x, point.y);
-  }
-  context.closePath();
-  context.fill();
-  context.stroke();
-
-  context.globalAlpha = 1 - transform.fold;
-  context.beginPath();
-  context.moveTo(transform.points[0].x, transform.points[0].y);
-  context.lineTo(0, 2);
-  context.lineTo(transform.points[2].x, transform.points[2].y);
-  context.stroke();
-  context.restore();
+  drawMessage(context, {
+    x: letter.x,
+    y: letter.y,
+    progress,
+    time: now,
+    glow: 0.38,
+    fromFog: letter.fromFog,
+  });
 }
 
 function drawPlane(plane, now) {
   const age = (now - plane.bornAt) / plane.life;
-  context.save();
-  context.globalAlpha = Math.min(1, (1 - age) * 2.5);
-  context.translate(plane.x, plane.y);
-  context.rotate(Math.atan2(plane.vy, plane.vx));
-  context.fillStyle = palette.paper;
-  context.strokeStyle = "rgba(23, 54, 61, 0.7)";
-  context.lineWidth = 0.8;
-  context.beginPath();
-  context.moveTo(-13, -7);
-  context.lineTo(16, 0);
-  context.lineTo(-11, 9);
-  context.lineTo(-4, 1);
-  context.closePath();
-  context.fill();
-  context.stroke();
-  context.restore();
+  drawPaperPlane(context, {
+    x: plane.x,
+    y: plane.y,
+    angle: Math.atan2(plane.vy, plane.vx),
+    alpha: Math.min(1, (1 - age) * 2.5),
+    controllable: plane.controlBlend ?? 1,
+    time: now,
+  });
 }
 
 function drawTreeLayer(now) {
@@ -1148,6 +1152,8 @@ function seedPerformanceScene() {
       life: 3_600_000,
       phase: random() * Math.PI * 2,
       looping: true,
+      controllableAt: now,
+      controlBlend: 1,
     });
   }
 
