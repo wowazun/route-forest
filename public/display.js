@@ -211,10 +211,10 @@ function buildRoute(sequence, immediate = false, controller = null) {
 
   if (immediate) {
     for (const tree of allTrees) addTreeMemory(tree, 1, true);
-    return;
   }
 
   if (waypoints.length === 0) return;
+  if (immediate && !controller) return;
   const route = {
     id: sequence.sequenceId,
     waypoints,
@@ -224,7 +224,8 @@ function buildRoute(sequence, immediate = false, controller = null) {
     registeredAt: performance.now(),
   };
   state.routeRegistry.set(sequence.sequenceId, route);
-  state.pendingFlights.push(route);
+  if (!immediate) state.pendingFlights.push(route);
+  return route;
 }
 
 function ingestObservation(
@@ -236,9 +237,10 @@ function ingestObservation(
   state.seenMeasurements.add(sequence.sequenceId);
   state.routesSeen += 1;
   destinationState.textContent = `DESTINATION / ${sequence.destinationLabel}`;
-  buildRoute(sequence, immediate, controller);
+  const route = buildRoute(sequence, immediate, controller);
   updateCounters();
   emptyMessage.classList.add("has-routes");
+  return route;
 }
 
 function updateCounters() {
@@ -393,6 +395,36 @@ function releasePlane(letter, now) {
     controller: letter.controller,
     palette: participantPalette,
   });
+}
+
+function restoreControllerPlane(route, now) {
+  if (
+    !route?.controller ||
+    state.endedControllers.has(route.id) ||
+    state.planes.some((plane) => plane.flightId === route.id) ||
+    state.letters.some((letter) => letter.flightId === route.id) ||
+    state.flights.some((flight) => flight.id === route.id)
+  ) {
+    return;
+  }
+  const points = waypointPositions(route);
+  const endpoint = points.at(-1);
+  if (!endpoint) return;
+  const pose = messagePoseAt(1);
+  releasePlane(
+    {
+      flightId: route.id,
+      x: endpoint.x - pose.xOffset,
+      y: endpoint.y - pose.yOffset,
+      controller: route.controller,
+    },
+    now,
+  );
+  const plane = state.planes.at(-1);
+  if (plane?.flightId === route.id) {
+    plane.controllableAt = now;
+    plane.controlBlend = 1;
+  }
 }
 
 function launchFlights(now) {
@@ -1059,15 +1091,27 @@ function connectLiveEvents() {
   source.addEventListener("snapshot", (event) => {
     try {
       const payload = JSON.parse(event.data);
-      const activeControllers = new Set(
-        (payload.controllers || []).map((controller) => controller.measurementId),
+      const controllerByMeasurement = new Map(
+        (payload.controllers || []).map((controller) => [
+          controller.measurementId,
+          controller,
+        ]),
       );
       state.planes = state.planes.filter(
         (plane) =>
-          !plane.controller || activeControllers.has(plane.flightId),
+          !plane.controller || controllerByMeasurement.has(plane.flightId),
       );
+      const now = performance.now();
       for (const item of payload.observations || []) {
-        ingestObservation(item.observation, { immediate: true });
+        const measurementId = item.observation?.measurementId;
+        const controller =
+          controllerByMeasurement.get(measurementId) || null;
+        const route =
+          ingestObservation(item.observation, {
+            immediate: true,
+            controller,
+          }) || state.routeRegistry.get(measurementId);
+        if (controller) restoreControllerPlane(route, now);
       }
     } catch {
       setConnection("", "データを確認しています");
