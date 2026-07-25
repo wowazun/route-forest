@@ -46,7 +46,8 @@ test("connects the mobile controller and display through owned server events", a
     /controllerByMeasurement\.get\(measurementId\)/,
   );
   assert.match(display, /restoreControllerPlane\(route, now\)/);
-  assert.match(displayPage, /display\.js\?v=14/);
+  assert.match(display, /dataset\.controllerPlanes/);
+  assert.match(displayPage, /display\.js\?v=15/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,

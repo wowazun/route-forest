@@ -622,6 +622,16 @@ function updateDiagnostics(now) {
   exhibition.dataset.planes = String(state.planes.length);
   exhibition.dataset.fogs = String(state.fogs.length);
   exhibition.dataset.controllerInputs = String(state.planeControls.size);
+  const controllerPlane = state.planes.find((plane) => plane.controller);
+  exhibition.dataset.controllerPlanes = String(
+    state.planes.filter((plane) => plane.controller).length,
+  );
+  exhibition.dataset.controllerPlaneX = controllerPlane
+    ? controllerPlane.x.toFixed(2)
+    : "";
+  exhibition.dataset.controllerPlaneY = controllerPlane
+    ? controllerPlane.y.toFixed(2)
+    : "";
   exhibition.dataset.windTrees = String(state.windIndex.size);
 }
 
