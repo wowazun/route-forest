@@ -298,10 +298,19 @@ export function createHttpServer({
         sendSseEvent(response, "snapshot", {
           schemaVersion: 1,
           observations: measurementService.getRecentObservations(),
+          controllers: controllerService.activeAppearances(),
         });
 
         const unsubscribeMeasurements = measurementService.subscribe((event) => {
-          sendSseEvent(response, event.type, event);
+          const measurementId = event.observation?.measurementId;
+          const controller = measurementId
+            ? controllerService.appearanceForMeasurement(measurementId)
+            : null;
+          sendSseEvent(
+            response,
+            event.type,
+            controller ? { ...event, controller } : event,
+          );
         });
         const unsubscribeControllers = controllerService.subscribe((event) => {
           sendSseEvent(response, event.type, event);

@@ -112,6 +112,7 @@ test("accepts a consented request for a normalized website destination", async (
     assert.match(body.measurementId, /^[0-9a-f-]{36}$/);
     assert.match(body.controller.sessionId, /^[0-9a-f-]{36}$/);
     assert.ok(body.controller.token.length >= 32);
+    assert.match(body.controller.color, /^#[0-9a-f]{6}$/);
     assert.equal(body.destination.hostname, "example.com");
     assert.equal(JSON.stringify(body).includes("8.8.8.8"), false);
 
@@ -212,6 +213,7 @@ test("forwards authenticated controller input and route highlights to displays",
     });
     await readUntil("event: plane-control");
     assert.match(streamText, new RegExp(created.measurementId));
+    assert.match(streamText, /"controller":\{"sessionId":.+?"color":"#[0-9a-f]{6}"/);
 
     const highlight = await fetch(
       `${baseUrl}/api/controller/sessions/${created.controller.sessionId}/highlight`,
@@ -225,6 +227,19 @@ test("forwards authenticated controller input and route highlights to displays",
     );
     assert.equal(highlight.status, 202);
     await readUntil("event: route-highlight");
+
+    const ended = await fetch(
+      `${baseUrl}/api/controller/sessions/${created.controller.sessionId}/end`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${created.controller.token}`,
+          origin: PUBLIC_ORIGIN,
+        },
+      },
+    );
+    assert.equal(ended.status, 200);
+    await readUntil("event: controller-ended");
     await reader.cancel();
   });
 });

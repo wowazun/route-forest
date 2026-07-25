@@ -39,6 +39,9 @@ const controllerKnob = document.querySelector("#controller-knob");
 const controllerX = document.querySelector("#controller-x");
 const controllerY = document.querySelector("#controller-y");
 const controllerEnded = document.querySelector("#controller-ended");
+const controllerColorSwatch = document.querySelector(
+  "#controller-color-swatch",
+);
 const routeHighlightButton = document.querySelector(
   "#route-highlight-button",
 );
@@ -113,12 +116,23 @@ function storeControllerCredentials(measurementId, controller) {
     measurementId,
     sessionId: controller.sessionId,
     token: controller.token,
+    color: /^#[0-9a-f]{6}$/i.test(controller.color || "")
+      ? controller.color
+      : "#d5a24b",
     expiresAt: controller.expiresAt,
   };
   sessionStorage.setItem(
     CONTROLLER_STORAGE_KEY,
     JSON.stringify(controllerCredentials),
   );
+}
+
+function applyControllerColor() {
+  const color = /^#[0-9a-f]{6}$/i.test(controllerCredentials?.color || "")
+    ? controllerCredentials.color
+    : "#d5a24b";
+  controllerPanel.style.setProperty("--participant-color", color);
+  controllerColorSwatch.title = color;
 }
 
 function setControllerConnection(mode, label) {
@@ -253,6 +267,7 @@ async function updateControllerStatus() {
 
 function startControllerSession() {
   if (!controllerCredentials) return;
+  applyControllerColor();
   controllerPanel.hidden = false;
   applyControllerStatus({
     phase: "connecting",
@@ -534,6 +549,7 @@ consentForm.addEventListener("submit", async (event) => {
   try {
     const queued = await requestMeasurement(website);
     storeControllerCredentials(queued.measurementId, queued.controller);
+    startControllerSession();
     const record = await waitForMeasurement(queued.measurementId);
     if (record.status === "completed") {
       renderResult(record);
@@ -555,29 +571,93 @@ websiteInput.addEventListener("input", () => {
   if (websiteInput.value.trim()) formMessage.textContent = "";
 });
 
-controllerPad.addEventListener("pointerdown", (event) => {
+function beginControllerPointer(pointerId, clientX, clientY) {
   if (!controllerCanControl) return;
-  event.preventDefault();
-  controllerPointer = event.pointerId;
-  controllerPad.setPointerCapture(event.pointerId);
+  controllerPointer = pointerId;
   controllerPad.classList.add("is-active");
-  setControllerFromPointer(event.clientX, event.clientY);
+  setControllerFromPointer(clientX, clientY);
   clearInterval(controllerInputTimer);
   controllerInputTimer = setInterval(() => {
     sendControllerInput();
   }, 90);
-});
-controllerPad.addEventListener("pointermove", (event) => {
-  if (controllerPointer !== event.pointerId) return;
-  event.preventDefault();
-  setControllerFromPointer(event.clientX, event.clientY);
-});
-controllerPad.addEventListener("pointerup", (event) => {
-  releaseControllerPointer(event.pointerId);
-});
-controllerPad.addEventListener("pointercancel", (event) => {
-  releaseControllerPointer(event.pointerId);
-});
+}
+
+if ("PointerEvent" in window) {
+  controllerPad.addEventListener("pointerdown", (event) => {
+    if (!controllerCanControl) return;
+    event.preventDefault();
+    beginControllerPointer(event.pointerId, event.clientX, event.clientY);
+    try {
+      controllerPad.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is supplementary; document-level release still neutralizes.
+    }
+  });
+  controllerPad.addEventListener("pointermove", (event) => {
+    if (controllerPointer !== event.pointerId) return;
+    event.preventDefault();
+    setControllerFromPointer(event.clientX, event.clientY);
+  });
+  controllerPad.addEventListener("pointerup", (event) => {
+    releaseControllerPointer(event.pointerId);
+  });
+  controllerPad.addEventListener("pointercancel", (event) => {
+    releaseControllerPointer(event.pointerId);
+  });
+} else {
+  controllerPad.addEventListener(
+    "touchstart",
+    (event) => {
+      if (!controllerCanControl || controllerPointer !== null) return;
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      event.preventDefault();
+      beginControllerPointer(
+        `touch-${touch.identifier}`,
+        touch.clientX,
+        touch.clientY,
+      );
+    },
+    { passive: false },
+  );
+  controllerPad.addEventListener(
+    "touchmove",
+    (event) => {
+      const touch = Array.from(event.touches).find(
+        (item) => `touch-${item.identifier}` === controllerPointer,
+      );
+      if (!touch) return;
+      event.preventDefault();
+      setControllerFromPointer(touch.clientX, touch.clientY);
+    },
+    { passive: false },
+  );
+  controllerPad.addEventListener("touchend", (event) => {
+    const touch = Array.from(event.changedTouches).find(
+      (item) => `touch-${item.identifier}` === controllerPointer,
+    );
+    if (touch) releaseControllerPointer(`touch-${touch.identifier}`);
+  });
+  controllerPad.addEventListener("touchcancel", (event) => {
+    const touch = Array.from(event.changedTouches).find(
+      (item) => `touch-${item.identifier}` === controllerPointer,
+    );
+    if (touch) releaseControllerPointer(`touch-${touch.identifier}`);
+  });
+  controllerPad.addEventListener("mousedown", (event) => {
+    if (!controllerCanControl || controllerPointer !== null) return;
+    event.preventDefault();
+    beginControllerPointer("mouse", event.clientX, event.clientY);
+  });
+  document.addEventListener("mousemove", (event) => {
+    if (controllerPointer !== "mouse") return;
+    event.preventDefault();
+    setControllerFromPointer(event.clientX, event.clientY);
+  });
+  document.addEventListener("mouseup", () => {
+    releaseControllerPointer("mouse");
+  });
+}
 window.addEventListener("blur", () => {
   if (controllerPointer !== null) {
     releaseControllerPointer(controllerPointer);
@@ -625,6 +705,8 @@ async function restoreControllerSession() {
   }
   if (!stored?.measurementId || !stored?.sessionId || !stored?.token) return;
   controllerCredentials = stored;
+  applyControllerColor();
+  startControllerSession();
   setPanel("measuring");
   startElapsedClock();
   try {

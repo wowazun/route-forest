@@ -708,6 +708,7 @@ h2 {
 .route-controller {
   --control-vector-x: 0;
   --control-vector-y: 0;
+  --participant-color: var(--seed);
   margin: 12px 0 34px;
   padding: 22px;
   border: 1px solid rgba(23, 54, 61, 0.28);
@@ -742,6 +743,26 @@ h2 {
   font-size: clamp(1.35rem, 6vw, 2rem);
   font-weight: 500;
   letter-spacing: 0.06em;
+}
+
+.controller-identity {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 9px 0 0;
+  color: rgba(244, 247, 246, 0.62);
+  font-size: 0.62rem;
+}
+
+.controller-color-swatch {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(244, 247, 246, 0.5);
+  border-radius: 50%;
+  background: var(--participant-color);
+  box-shadow: 0 0 12px rgba(213, 162, 75, 0.45);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--participant-color) 55%, transparent);
 }
 
 .controller-connection {
@@ -797,11 +818,14 @@ h2 {
 
 .controller-pad {
   position: relative;
-  width: min(68vw, 248px);
+  width: 248px;
+  height: 248px;
+  max-width: 68vw;
+  max-height: 68vw;
   aspect-ratio: 1;
   margin: 8px auto;
   overflow: hidden;
-  border: 1px solid rgba(184, 222, 213, 0.32);
+  border: 1px solid var(--participant-color);
   border-radius: 50%;
   background:
     linear-gradient(
@@ -852,7 +876,7 @@ h2 {
   width: 62px;
   height: 62px;
   place-items: center;
-  border: 1px solid rgba(213, 162, 75, 0.7);
+  border: 1px solid var(--participant-color);
   border-radius: 50%;
   background: rgba(18, 51, 59, 0.92);
   box-shadow: 0 9px 24px rgba(0, 0, 0, 0.24);
@@ -871,8 +895,9 @@ h2 {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--seed);
+  background: var(--participant-color);
   box-shadow: 0 0 13px rgba(213, 162, 75, 0.55);
+  box-shadow: 0 0 13px color-mix(in srgb, var(--participant-color) 58%, transparent);
 }
 
 .controller-actions {
@@ -915,8 +940,8 @@ h2 {
 .route-highlight-action {
   width: 100%;
   min-height: 50px;
-  border: 1px solid rgba(213, 162, 75, 0.72);
-  color: var(--seed);
+  border: 1px solid var(--participant-color);
+  color: var(--participant-color);
   background: transparent;
   cursor: pointer;
 }
@@ -928,7 +953,7 @@ h2 {
 
 .route-highlight-action.is-active {
   color: var(--ink);
-  background: var(--seed);
+  background: var(--participant-color);
 }
 
 .route-highlight-action:focus-visible {
@@ -1097,8 +1122,21 @@ h2 {
   }
 
   .controller-body {
-    grid-template-columns: 1fr;
+    display: block;
     gap: 12px;
+  }
+
+  .controller-pad {
+    width: calc(100vw - 76px);
+    height: calc(100vw - 76px);
+    min-width: 190px;
+    min-height: 190px;
+    max-width: 248px;
+    max-height: 248px;
+  }
+
+  .controller-actions {
+    margin-top: 14px;
   }
 }
 

@@ -33,6 +33,13 @@ test("binds an opaque controller token to exactly one measurement", () => {
   });
   service.subscribe((event) => events.push(event));
   const controller = service.create("measurement-a");
+  assert.match(controller.color, /^#[0-9a-f]{6}$/);
+  assert.deepEqual(service.activeAppearances()[0], {
+    measurementId: "measurement-a",
+    sessionId: controller.sessionId,
+    color: controller.color,
+    expiresAt: controller.expiresAt,
+  });
 
   assert.equal(
     service.status(controller.sessionId, controller.token).phase,
@@ -120,6 +127,57 @@ test("rate-limits input, cools down highlights, and neutralizes on end", () => {
     service.status(controller.sessionId, controller.token).phase,
     "ended",
   );
-  assert.deepEqual(events.at(-1).x, 0);
-  assert.deepEqual(events.at(-1).y, 0);
+  const neutral = events.findLast((event) => event.type === "plane-control");
+  assert.deepEqual(neutral.x, 0);
+  assert.deepEqual(neutral.y, 0);
+  assert.equal(events.at(-1).type, "controller-ended");
+});
+
+test("ends the plane when the phone-to-server session disappears", () => {
+  let now = new Date("2026-07-26T00:00:00.000Z");
+  const record = completedRecord(now.toISOString());
+  const events = [];
+  const service = new ControllerSessionService({
+    recordProvider: () => record,
+    clock: () => now,
+    tokenFactory: () => "d".repeat(43),
+    uuidFactory: () => "33333333-3333-4333-8333-333333333333",
+  });
+  service.subscribe((event) => events.push(event));
+  const controller = service.create("measurement-a");
+
+  now = new Date("2026-07-26T00:00:10.000Z");
+  assert.equal(
+    service.status(controller.sessionId, controller.token).phase,
+    "controllable",
+  );
+  now = new Date("2026-07-26T00:01:40.000Z");
+  assert.equal(
+    service.status(controller.sessionId, controller.token).phase,
+    "ended",
+  );
+  assert.equal(events.at(-1).type, "controller-ended");
+  assert.equal(events.at(-1).reason, "disconnected");
+});
+
+test("assigns distinct colors to concurrent phone sessions", () => {
+  const now = new Date("2026-07-26T00:00:00.000Z");
+  const sessionIds = [
+    "44444444-4444-4444-8444-444444444444",
+    "55555555-5555-4555-8555-555555555555",
+  ];
+  const service = new ControllerSessionService({
+    recordProvider: () => ({
+      measurementId: "active",
+      status: "running",
+      updatedAt: now.toISOString(),
+    }),
+    clock: () => now,
+    tokenFactory: () => "e".repeat(43),
+    uuidFactory: () => sessionIds.shift(),
+  });
+
+  const first = service.create("measurement-first");
+  const second = service.create("measurement-second");
+  assert.notEqual(first.color, second.color);
 });

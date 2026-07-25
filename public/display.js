@@ -95,6 +95,7 @@ const state = {
   treeLayerCacheKey: "",
   birdVisuals: new Map(),
   planeControls: new Map(),
+  endedControllers: new Set(),
   routeRegistry: new Map(),
   windIndex: createTreeWindIndex(),
   windIndexDirty: true,
@@ -187,7 +188,7 @@ function addTreeMemory(tree, amount = 1, immediate = false) {
   state.windIndexDirty = true;
 }
 
-function buildRoute(sequence, immediate = false) {
+function buildRoute(sequence, immediate = false, controller = null) {
   const waypoints = [];
   const allTrees = [];
 
@@ -219,19 +220,23 @@ function buildRoute(sequence, immediate = false) {
     waypoints,
     addressFamily: sequence.addressFamily,
     termination: sequence.termination,
+    controller,
     registeredAt: performance.now(),
   };
   state.routeRegistry.set(sequence.sequenceId, route);
   state.pendingFlights.push(route);
 }
 
-function ingestObservation(observation, { immediate = false } = {}) {
+function ingestObservation(
+  observation,
+  { immediate = false, controller = null } = {},
+) {
   const sequence = createBirdSequence(observation);
   if (state.seenMeasurements.has(sequence.sequenceId)) return;
   state.seenMeasurements.add(sequence.sequenceId);
   state.routesSeen += 1;
   destinationState.textContent = `DESTINATION / ${sequence.destinationLabel}`;
-  buildRoute(sequence, immediate);
+  buildRoute(sequence, immediate, controller);
   updateCounters();
   emptyMessage.classList.add("has-routes");
 }
@@ -353,7 +358,20 @@ function releaseFeather(flight, now) {
 }
 
 function releasePlane(letter, now) {
+  if (
+    letter.controller &&
+    state.endedControllers.has(letter.flightId)
+  ) {
+    return;
+  }
   const pose = messagePoseAt(1);
+  const participantPalette = letter.controller?.color
+    ? {
+        ...palette,
+        paper: letter.controller.color,
+        seed: letter.controller.color,
+      }
+    : palette;
   state.planes.push({
     x: letter.x + pose.xOffset,
     y: letter.y + pose.yOffset,
@@ -363,10 +381,16 @@ function releasePlane(letter, now) {
     controllableAt:
       now + (prefersReducedMotion ? 0 : visualStyle.motion.planeControlDelayMs),
     controlBlend: prefersReducedMotion ? 1 : 0,
-    life: isSimulation ? 20_000 : visualStyle.motion.planeFlightMs,
+    life: letter.controller
+      ? Number.POSITIVE_INFINITY
+      : isSimulation
+        ? 20_000
+        : visualStyle.motion.planeFlightMs,
     phase: (hashText(letter.flightId) % 100) / 20,
     heading: 0,
     wind: { x: 0, y: 0 },
+    controller: letter.controller,
+    palette: participantPalette,
   });
 }
 
@@ -419,6 +443,7 @@ function completeFlight(flight, now) {
     bornAt: now,
     life: prefersReducedMotion ? 1_200 : visualStyle.motion.routeHighlightMs,
   });
+  if (flight.controller && state.endedControllers.has(flight.id)) return;
   state.letters.push({
     flightId: flight.id,
     x: letterAnchor.x,
@@ -426,6 +451,7 @@ function completeFlight(flight, now) {
     bornAt: now,
     life: prefersReducedMotion ? 180 : visualStyle.motion.letterFoldMs,
     fromFog: last.source?.kind === "fog",
+    controller: flight.controller,
     released: false,
   });
 }
@@ -585,6 +611,7 @@ function updateScene(now, deltaSeconds) {
     if (now - route.registeredAt > 900_000) {
       state.routeRegistry.delete(routeId);
       state.planeControls.delete(routeId);
+      state.endedControllers.delete(routeId);
     }
   }
 
@@ -776,6 +803,7 @@ function drawPlane(plane, now) {
     alpha: Math.min(1, (1 - age) * 2.5),
     controllable: plane.controlBlend ?? 1,
     time: now,
+    palette: plane.palette || palette,
   });
 }
 
@@ -1030,6 +1058,13 @@ function connectLiveEvents() {
   source.addEventListener("snapshot", (event) => {
     try {
       const payload = JSON.parse(event.data);
+      const activeControllers = new Set(
+        (payload.controllers || []).map((controller) => controller.measurementId),
+      );
+      state.planes = state.planes.filter(
+        (plane) =>
+          !plane.controller || activeControllers.has(plane.flightId),
+      );
       for (const item of payload.observations || []) {
         ingestObservation(item.observation, { immediate: true });
       }
@@ -1040,7 +1075,9 @@ function connectLiveEvents() {
   source.addEventListener("route-observed", (event) => {
     try {
       const payload = JSON.parse(event.data);
-      ingestObservation(payload.observation);
+      ingestObservation(payload.observation, {
+        controller: payload.controller || null,
+      });
     } catch {
       setConnection("", "データを確認しています");
     }
@@ -1083,6 +1120,22 @@ function connectLiveEvents() {
       });
     } catch {
       // Invalid highlight events are ignored.
+    }
+  });
+  source.addEventListener("controller-ended", (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      if (typeof payload.measurementId !== "string") return;
+      state.endedControllers.add(payload.measurementId);
+      state.planeControls.delete(payload.measurementId);
+      state.letters = state.letters.filter(
+        (letter) => letter.flightId !== payload.measurementId,
+      );
+      state.planes = state.planes.filter(
+        (plane) => plane.flightId !== payload.measurementId,
+      );
+    } catch {
+      // Invalid controller lifecycle events are ignored.
     }
   });
 }
@@ -1351,5 +1404,7 @@ window.__routeForestDisplay = Object.freeze({
 
 if (isPerformance) seedPerformanceScene();
 else if (isSimulation) startSimulation();
-else if (isDemo) startDemo();
-else connectLiveEvents();
+else if (isDemo) {
+  startDemo();
+  connectLiveEvents();
+} else connectLiveEvents();

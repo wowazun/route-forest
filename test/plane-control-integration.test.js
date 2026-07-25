@@ -3,21 +3,39 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("connects the mobile controller and display through owned server events", async () => {
-  const [app, page, display, server] = await Promise.all([
+  const [app, page, styles, display, server] = await Promise.all([
     readFile(new URL("../public/app.js", import.meta.url), "utf8"),
     readFile(new URL("../public/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../public/styles.css", import.meta.url), "utf8"),
     readFile(new URL("../public/display.js", import.meta.url), "utf8"),
     readFile(new URL("../src/http/server.js", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /id="controller-pad"/);
+  assert.match(page, /id="controller-color-swatch"/);
   assert.match(page, /id="route-highlight-button"/);
   assert.match(app, /authorization: `Bearer/);
+  assert.match(app, /--participant-color/);
   assert.match(app, /setInterval\(\(\) => \{\s*sendControllerInput/);
+  assert.match(app, /"touchstart"/);
+  assert.match(app, /"touchmove"/);
+  assert.match(styles, /\.controller-pad\s*\{[^}]*height:\s*248px/s);
+  assert.match(
+    styles,
+    /@media \(max-width: 560px\)[\s\S]*?\.controller-pad\s*\{[^}]*height:\s*calc\(100vw - 76px\)/,
+  );
   assert.match(display, /source\.addEventListener\("plane-control"/);
   assert.match(display, /source\.addEventListener\("route-highlight"/);
+  assert.match(display, /source\.addEventListener\("controller-ended"/);
+  assert.match(display, /Number\.POSITIVE_INFINITY/);
+  assert.match(display, /paper: letter\.controller\.color/);
+  assert.match(
+    display,
+    /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,
+  );
   assert.match(server, /controllerService\.input/);
   assert.match(server, /controllerService\.highlight/);
+  assert.match(server, /appearanceForMeasurement/);
 });
 
 test("shares wind and plane physics between production and Art Lab", async () => {

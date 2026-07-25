@@ -11,6 +11,16 @@ const MESSAGE_SEQUENCE_MS = 3_200;
 const PLANE_CONTROL_DELAY_MS = 520;
 const ROUTE_MINIMUM_MS = 5_200;
 const ROUTE_STEP_MS = 1_050;
+const DISCONNECT_GRACE_MS = 30_000;
+const ENDED_RETENTION_MS = 60_000;
+const PLANE_COLORS = Object.freeze([
+  "#d5a24b",
+  "#c77968",
+  "#74a9a5",
+  "#8faed1",
+  "#b69ac8",
+  "#b7ad74",
+]);
 
 export class ControllerSessionError extends Error {
   constructor(code, message, statusCode = 400) {
@@ -23,6 +33,25 @@ export class ControllerSessionError extends Error {
 
 function tokenDigest(token) {
   return createHash("sha256").update(String(token), "utf8").digest();
+}
+
+function participantColor(measurementId, sessions = []) {
+  const digest = createHash("sha256")
+    .update(String(measurementId), "utf8")
+    .digest();
+  const usage = new Map(PLANE_COLORS.map((color) => [color, 0]));
+  for (const session of sessions) {
+    if (!session.ended && usage.has(session.color)) {
+      usage.set(session.color, usage.get(session.color) + 1);
+    }
+  }
+  const start = digest[0] % PLANE_COLORS.length;
+  let selected = PLANE_COLORS[start];
+  for (let offset = 1; offset < PLANE_COLORS.length; offset += 1) {
+    const candidate = PLANE_COLORS[(start + offset) % PLANE_COLORS.length];
+    if (usage.get(candidate) < usage.get(selected)) selected = candidate;
+  }
+  return selected;
 }
 
 function boundedInput(value, field) {
@@ -44,10 +73,13 @@ export class ControllerSessionService {
   #clock;
   #recordProvider;
   #recordTtlMs;
+  #disconnectGraceMs;
   #sessions = new Map();
   #subscribers = new Set();
   #tokenFactory;
   #uuidFactory;
+  #schedule;
+  #cancelSchedule;
 
   constructor({
     recordProvider,
@@ -55,6 +87,9 @@ export class ControllerSessionService {
     clock = () => new Date(),
     tokenFactory = () => randomBytes(32).toString("base64url"),
     uuidFactory = () => randomUUID(),
+    disconnectGraceMs = DISCONNECT_GRACE_MS,
+    schedule = (callback, delay) => setTimeout(callback, delay),
+    cancelSchedule = (timer) => clearTimeout(timer),
   }) {
     if (typeof recordProvider !== "function") {
       throw new TypeError("ControllerSessionService requires recordProvider");
@@ -64,6 +99,12 @@ export class ControllerSessionService {
     this.#clock = clock;
     this.#tokenFactory = tokenFactory;
     this.#uuidFactory = uuidFactory;
+    this.#disconnectGraceMs = Math.max(
+      5_000,
+      Number(disconnectGraceMs) || DISCONNECT_GRACE_MS,
+    );
+    this.#schedule = schedule;
+    this.#cancelSchedule = cancelSchedule;
   }
 
   subscribe(listener) {
@@ -88,13 +129,19 @@ export class ControllerSessionService {
       lastInputAt: 0,
       lastSequence: -1,
       lastHighlightAt: 0,
+      lastSeenAt: now.getTime(),
       ended: false,
+      endedAt: null,
+      disconnectTimer: null,
+      color: participantColor(measurementId, this.#sessions.values()),
     };
     this.#sessions.set(sessionId, session);
+    this.#armDisconnectTimer(session);
     return Object.freeze({
       schemaVersion: 1,
       sessionId,
       token,
+      color: session.color,
       expiresAt: new Date(session.expiresAt).toISOString(),
     });
   }
@@ -102,6 +149,36 @@ export class ControllerSessionService {
   status(sessionId, token) {
     const session = this.#authenticate(sessionId, token);
     return this.#publicStatus(session);
+  }
+
+  appearanceForMeasurement(measurementId) {
+    this.#expireSessions();
+    for (const session of this.#sessions.values()) {
+      if (session.measurementId === measurementId && !session.ended) {
+        return Object.freeze({
+          sessionId: session.sessionId,
+          color: session.color,
+          expiresAt: new Date(session.expiresAt).toISOString(),
+        });
+      }
+    }
+    return null;
+  }
+
+  activeAppearances() {
+    this.#expireSessions();
+    return Object.freeze(
+      [...this.#sessions.values()]
+        .filter((session) => !session.ended)
+        .map((session) =>
+          Object.freeze({
+            measurementId: session.measurementId,
+            sessionId: session.sessionId,
+            color: session.color,
+            expiresAt: new Date(session.expiresAt).toISOString(),
+          }),
+        ),
+    );
   }
 
   input(sessionId, token, { x, y, sequence }) {
@@ -192,18 +269,7 @@ export class ControllerSessionService {
 
   end(sessionId, token) {
     const session = this.#authenticate(sessionId, token);
-    session.ended = true;
-    session.lastSequence += 1;
-    const now = this.#clock().getTime();
-    this.#publish({
-      schemaVersion: 1,
-      type: "plane-control",
-      occurredAt: new Date(now).toISOString(),
-      measurementId: session.measurementId,
-      x: 0,
-      y: 0,
-      sequence: session.lastSequence,
-    });
+    this.#endSession(session, "client-ended");
     return Object.freeze({ ended: true });
   }
 
@@ -222,6 +288,18 @@ export class ControllerSessionService {
         401,
       );
     }
+    const now = this.#clock().getTime();
+    if (
+      !session.ended &&
+      (now >= session.expiresAt ||
+        now - session.lastSeenAt > this.#disconnectGraceMs)
+    ) {
+      this.#endSession(
+        session,
+        now >= session.expiresAt ? "expired" : "disconnected",
+      );
+    }
+    if (!session.ended) this.#touch(session);
     return session;
   }
 
@@ -292,10 +370,69 @@ export class ControllerSessionService {
     }
   }
 
+  #touch(session) {
+    session.lastSeenAt = this.#clock().getTime();
+    this.#armDisconnectTimer(session);
+  }
+
+  #armDisconnectTimer(session) {
+    if (session.disconnectTimer) {
+      this.#cancelSchedule(session.disconnectTimer);
+    }
+    session.disconnectTimer = this.#schedule(() => {
+      const current = this.#sessions.get(session.sessionId);
+      if (!current || current.ended) return;
+      const idleFor = this.#clock().getTime() - current.lastSeenAt;
+      if (idleFor >= this.#disconnectGraceMs) {
+        this.#endSession(current, "disconnected");
+        return;
+      }
+      this.#armDisconnectTimer(current);
+    }, this.#disconnectGraceMs + 50);
+    session.disconnectTimer?.unref?.();
+  }
+
+  #endSession(session, reason) {
+    if (session.ended) return;
+    session.ended = true;
+    session.endedAt = this.#clock().getTime();
+    if (session.disconnectTimer) {
+      this.#cancelSchedule(session.disconnectTimer);
+      session.disconnectTimer = null;
+    }
+    session.lastSequence += 1;
+    const occurredAt = new Date(session.endedAt).toISOString();
+    this.#publish({
+      schemaVersion: 1,
+      type: "plane-control",
+      occurredAt,
+      measurementId: session.measurementId,
+      x: 0,
+      y: 0,
+      sequence: session.lastSequence,
+    });
+    this.#publish({
+      schemaVersion: 1,
+      type: "controller-ended",
+      occurredAt,
+      measurementId: session.measurementId,
+      reason,
+    });
+  }
+
   #expireSessions() {
     const now = this.#clock().getTime();
     for (const [sessionId, session] of this.#sessions) {
-      if (session.expiresAt <= now) this.#sessions.delete(sessionId);
+      if (!session.ended && session.expiresAt <= now) {
+        this.#endSession(session, "expired");
+      }
+      if (
+        session.ended &&
+        session.endedAt !== null &&
+        now - session.endedAt > ENDED_RETENTION_MS
+      ) {
+        this.#sessions.delete(sessionId);
+      }
     }
   }
 }
