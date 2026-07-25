@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Route Forestの鳥、木、霧を同じ条件で比較するArt Lab。"
+    />
+    <title>鳥と木と霧の造形実験 — Route Forest Art Lab</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/art-lab.css" />
+  </head>
+  <body>
+    <main class="art-lab">
+      <header class="lab-header">
+        <a class="wordmark" href="/display?demo=1">
+          <span aria-hidden="true"></span>
+          情報通信路
+        </a>
+        <p>ART LAB / BIRD + TREE + FOG PROOF</p>
+        <a href="/style-guide">視覚標本帳</a>
+      </header>
+
+      <section class="lab-intro">
+        <div>
+          <p class="eyebrow">NEW ASSEMBLY / SOFT WING + INK VEIN</p>
+          <h1>鳥と木を、<br />一度つくり直す。</h1>
+        </div>
+        <p>
+          色、速度、配置、背景を揃え、造形だけを比較します。
+          5メートル離れて鳥と木を識別できるか、成長が蓄積に見えるか、
+          静止した森に余白が残るかを見ます。最後の標本は、柔翼の鳥と筆脈の木を
+          組み合わせた完成候補です。
+        </p>
+      </section>
+
+      <section class="lab-controls" aria-label="比較条件">
+        <fieldset>
+          <legend>SCENE</legend>
+          <button class="is-selected" type="button" data-mode="ensemble">
+            全体
+          </button>
+          <button type="button" data-mode="flight">飛行</button>
+          <button type="button" data-mode="growth">成長</button>
+          <button type="button" data-mode="fog">霧通過</button>
+          <button type="button" data-mode="tree-variations">TREE 12</button>
+          <button type="button" data-mode="tree-growth">TREE 1–6</button>
+          <button type="button" data-mode="bird-lab">BIRD LAB</button>
+          <button type="button" data-mode="bird-silhouettes">
+            BIRD SHAPES
+          </button>
+          <button type="button" data-mode="adopted-wing">
+            ADOPTED WING
+          </button>
+          <button type="button" data-mode="fog-lab">
+            FOG LAB
+          </button>
+        </fieldset>
+        <label>
+          <span>TREE AGE <output id="tree-age-output">72</output></span>
+          <input id="tree-age" type="range" min="8" max="100" value="72" />
+        </label>
+        <label>
+          <span>DENSITY <output id="density-output">6</output></span>
+          <input id="density" type="range" min="2" max="12" value="6" />
+        </label>
+        <button id="toggle-motion" class="motion-button" type="button">
+          動きを止める
+        </button>
+      </section>
+
+      <section id="bird-controls" class="bird-controls" aria-label="鳥の造形確認">
+        <label class="bird-preset">
+          <span>STATE PRESET</span>
+          <select id="bird-preset">
+            <option value="normal-flight">01 通常飛行</option>
+            <option value="wing-up">02 翼を上げる</option>
+            <option value="wing-mid">03 翼が中間</option>
+            <option value="wing-down">04 翼を下げる</option>
+            <option value="straight-flight">05 直線飛行</option>
+            <option value="curve-flight">06 曲線飛行</option>
+            <option value="direction-turn">07 方向転換</option>
+            <option value="seed-drop">08 種を落とす</option>
+            <option value="letter-drop">09 手紙を落とす</option>
+            <option value="fog-enter">10 霧へ入る</option>
+            <option value="fog-inside">11 霧の中</option>
+            <option value="fog-exit">12 霧から出る</option>
+            <option value="normal-glow">13 通常発光</option>
+            <option value="strong-glow">14 一時的な強い発光</option>
+            <option value="flock">15 複数羽</option>
+          </select>
+        </label>
+        <label>
+          <span>SILHOUETTE</span>
+          <select id="bird-silhouette">
+            <option value="swallow">A ツバメ型</option>
+            <option value="songbird">B 小鳥型</option>
+            <option value="mythic">C 神話鳥型</option>
+            <option value="current">現行・比較用</option>
+          </select>
+        </label>
+        <label>
+          <span>FLAP <output id="bird-flap-output">AUTO</output></span>
+          <input id="bird-flap" type="range" min="-100" max="100" value="0" />
+        </label>
+        <label>
+          <span>ANGLE <output id="bird-angle-output">0°</output></span>
+          <input id="bird-angle" type="range" min="-180" max="180" value="0" />
+        </label>
+        <label>
+          <span>SIZE <output id="bird-size-output">100%</output></span>
+          <input id="bird-size" type="range" min="60" max="180" value="100" />
+        </label>
+        <label>
+          <span>SPEED <output id="bird-speed-output">100%</output></span>
+          <input id="bird-speed" type="range" min="0" max="200" value="100" />
+        </label>
+        <label>
+          <span>GLOW <output id="bird-glow-output">35%</output></span>
+          <input id="bird-glow" type="range" min="0" max="100" value="35" />
+        </label>
+        <label>
+          <span>FOG <output id="bird-fog-output">0%</output></span>
+          <input id="bird-fog" type="range" min="0" max="100" value="0" />
+        </label>
+        <label>
+          <span>COUNT <output id="bird-count-output">1</output></span>
+          <input id="bird-count" type="range" min="1" max="12" value="1" />
+        </label>
+      </section>
+
+      <section id="fog-controls" class="fog-controls" aria-label="霧の造形確認">
+        <label class="fog-preset">
+          <span>FOG PRESET</span>
+          <select id="fog-preset">
+            <option value="hop-one">01 未観測1ホップ</option>
+            <option value="hop-three">02 未観測3ホップ</option>
+            <option value="hop-six">03 未観測6ホップ</option>
+            <option value="short">04 短い霧区間</option>
+            <option value="long">05 長い霧区間</option>
+            <option value="approach">06 鳥が霧へ近づく</option>
+            <option value="enter">07 鳥が霧へ入る</option>
+            <option value="inside">08 鳥が霧の中にいる</option>
+            <option value="exit">09 鳥が霧から出る</option>
+            <option value="after">10 鳥の通過直後</option>
+            <option value="fading">11 消滅途中</option>
+            <option value="double">12 霧が2つある状態</option>
+            <option value="flock">13 複数の鳥と霧</option>
+            <option value="compare">14 改善前の矩形霧と比較</option>
+          </select>
+        </label>
+        <label>
+          <span>UNKNOWN HOPS <output id="fog-hops-output">3</output></span>
+          <input id="fog-hops" type="range" min="1" max="6" value="3" />
+        </label>
+        <label>
+          <span>LENGTH <output id="fog-length-output">100%</output></span>
+          <input id="fog-length" type="range" min="60" max="180" value="100" />
+        </label>
+        <label>
+          <span>HEIGHT <output id="fog-height-output">100%</output></span>
+          <input id="fog-height" type="range" min="60" max="140" value="100" />
+        </label>
+        <label>
+          <span>OPACITY <output id="fog-opacity-output">46%</output></span>
+          <input id="fog-opacity" type="range" min="15" max="60" value="46" />
+        </label>
+        <label>
+          <span>LAYERS <output id="fog-layers-output">3</output></span>
+          <input id="fog-layers" type="range" min="2" max="4" value="3" />
+        </label>
+        <label>
+          <span>OPEN SPACE <output id="fog-void-output">34%</output></span>
+          <input id="fog-void" type="range" min="8" max="70" value="34" />
+        </label>
+        <label>
+          <span>DRIFT <output id="fog-speed-output">100%</output></span>
+          <input id="fog-speed" type="range" min="0" max="200" value="100" />
+        </label>
+        <label>
+          <span>APPEAR <output id="fog-appear-output">1600ms</output></span>
+          <input id="fog-appear" type="range" min="500" max="3000" step="100" value="1600" />
+        </label>
+        <label>
+          <span>HOLD <output id="fog-hold-output">4800ms</output></span>
+          <input id="fog-hold" type="range" min="1000" max="8000" step="200" value="4800" />
+        </label>
+        <label>
+          <span>FADE <output id="fog-fade-output">2600ms</output></span>
+          <input id="fog-fade" type="range" min="1000" max="6000" step="100" value="2600" />
+        </label>
+        <label>
+          <span>BIRD POSITION <output id="fog-bird-output">55%</output></span>
+          <input id="fog-bird" type="range" min="0" max="100" value="55" />
+        </label>
+      </section>
+
+      <section id="proofs" class="proofs" aria-label="鳥と木の造形比較"></section>
+
+      <section class="evaluation" aria-labelledby="evaluation-title">
+        <header>
+          <p class="eyebrow">HUMAN REVIEW</p>
+          <h2 id="evaluation-title">選ぶときに見ること</h2>
+        </header>
+        <ol>
+          <li>
+            <span>01</span>
+            <strong>遠距離の識別</strong>
+            <p>鳥と木が小さくなっても、霧や経路光と混同しない。</p>
+          </li>
+          <li>
+            <span>02</span>
+            <strong>成長の読みやすさ</strong>
+            <p>木が大きくなるほど、訪問の蓄積が自然に伝わる。</p>
+          </li>
+          <li>
+            <span>03</span>
+            <strong>静止時の品位</strong>
+            <p>鳥がいない時間にも森がうるさくならず、余白が残る。</p>
+          </li>
+          <li>
+            <span>04</span>
+            <strong>作品との固有性</strong>
+            <p>別のゲームや企業ダッシュボードにそのまま見えない。</p>
+          </li>
+        </ol>
+      </section>
+
+      <footer class="lab-footer">
+        <p>選択はまだ本番へ反映されません。</p>
+        <a id="selected-link" href="/art-lab">選択中の案へのリンク</a>
+      </footer>
+    </main>
+    <script type="module" src="/art-lab.js"></script>
+  </body>
+</html>

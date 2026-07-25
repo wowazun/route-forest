@@ -1,0 +1,23 @@
+[Unit]
+Description=Route Forest validation API
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/m-osuke/route-forest
+Environment=NODE_ENV=production
+EnvironmentFile=/home/m-osuke/.config/route-forest/app.env
+ExecStart=/home/m-osuke/.local/bin/node /home/m-osuke/route-forest/src/index.js
+Restart=on-failure
+RestartSec=3s
+TimeoutStopSec=10s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK
+RestrictSUIDSGID=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

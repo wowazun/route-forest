@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="情報通信路 Route Forestの色・形・動き・素材差し替え基準。"
+    />
+    <title>視覚標本帳 — Route Forest</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/style-guide.css" />
+  </head>
+  <body>
+    <header class="guide-header">
+      <a class="wordmark" href="/display?demo=1">
+        <span aria-hidden="true"></span>
+        情報通信路
+      </a>
+      <p>VISUAL SPECIMEN / VERSION 1</p>
+      <nav aria-label="関連ページ">
+        <a href="/art-lab">Art Lab</a>
+        <a href="/simulator">シミュレーター</a>
+        <a href="/control-lab">風の実験</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="guide-hero" aria-labelledby="guide-title">
+        <canvas id="style-field" aria-hidden="true"></canvas>
+        <div class="hero-copy">
+          <p class="eyebrow">VISUAL THESIS</p>
+          <h1 id="guide-title">闇の中で、<br />通信が育つ。</h1>
+          <p>
+            情報を線図にせず、生き物が残す記憶として描く。発光は到着に、
+            金色は新しい出来事に、霧は見えなかった区間にだけ使う。
+          </p>
+        </div>
+        <p class="hero-caption">BIRD / SEED / TREE / FOG / LETTER / PLANE</p>
+      </section>
+
+      <section class="guide-section palette-section" aria-labelledby="palette-title">
+        <header class="section-heading">
+          <p class="section-index">FIELD 01</p>
+          <div>
+            <h2 id="palette-title">色は、役割で使う。</h2>
+            <p>装飾のために色を増やさず、現象の意味と一対一にする。</p>
+          </div>
+        </header>
+        <div id="palette-strip" class="palette-strip"></div>
+      </section>
+
+      <section class="guide-section type-section" aria-labelledby="type-title">
+        <header class="section-heading">
+          <p class="section-index">FIELD 02</p>
+          <div>
+            <h2 id="type-title">三つの声を混ぜない。</h2>
+            <p>作品名、説明、計測値で書体の役割を分ける。</p>
+          </div>
+        </header>
+        <div class="type-specimens">
+          <article class="type-display">
+            <span>DISPLAY / 明朝</span>
+            <p>風を読み、<br />森へ送る。</p>
+            <small>作品の題と、感情の入口にだけ使う。</small>
+          </article>
+          <article class="type-body">
+            <span>BODY / ゴシック</span>
+            <p>
+              会場から選んだWebサイト方向へ、その瞬間に観測できた道を
+              鳥がたどります。
+            </p>
+            <small>説明は短く、行間を広く、現象をそのまま書く。</small>
+          </article>
+          <article class="type-utility">
+            <span>UTILITY / MONO</span>
+            <p>DESTINATION / OPENSTREETMAP.ORG<br />ROUTES 18 / TREES 74</p>
+            <small>状態、数値、英字ラベル以外には使わない。</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="guide-section asset-section" aria-labelledby="asset-title">
+        <header class="section-heading">
+          <p class="section-index">FIELD 03</p>
+          <div>
+            <h2 id="asset-title">形は、動きで見分ける。</h2>
+            <p>
+              輪郭を描き込みすぎず、重心・向き・変化の仕方を素材契約として保つ。
+            </p>
+          </div>
+        </header>
+        <div id="asset-grid" class="asset-grid"></div>
+      </section>
+
+      <section class="guide-section motion-section" aria-labelledby="motion-title">
+        <header class="section-heading">
+          <p class="section-index">FIELD 04</p>
+          <div>
+            <h2 id="motion-title">動きは、因果の間をつなぐ。</h2>
+            <p>速さではなく「何が起きたか」を読み取れる時間を与える。</p>
+          </div>
+        </header>
+        <div id="motion-list" class="motion-list"></div>
+      </section>
+
+      <section class="guide-section rules-section" aria-labelledby="rules-title">
+        <header class="section-heading">
+          <p class="section-index">FIELD 05</p>
+          <div>
+            <h2 id="rules-title">見えなかったものを、描きすぎない。</h2>
+            <p>作品の正確さと静けさを守る、差し替え時の判断基準。</p>
+          </div>
+        </header>
+        <div class="rule-columns">
+          <article>
+            <h3>維持する</h3>
+            <ul id="principle-list"></ul>
+          </article>
+          <article>
+            <h3>避ける</h3>
+            <ul>
+              <li>全画面を覆う常設の霧</li>
+              <li>経路全体を同じ強さで光らせる線</li>
+              <li>現実の地理配置に見える木の並び</li>
+              <li>一度に主役になる複数の強い色</li>
+              <li>意味のない待機モーションや弾むUI</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="guide-section pipeline-section" aria-labelledby="pipeline-title">
+        <header class="section-heading">
+          <p class="section-index">FIELD 06</p>
+          <div>
+            <h2 id="pipeline-title">素材を変えても、契約を変えない。</h2>
+            <p>SVG、スプライト、Rive、シェーダーを目的別に選ぶ。</p>
+          </div>
+        </header>
+        <div class="pipeline-table" role="table" aria-label="素材方式の判断基準">
+          <div class="pipeline-row pipeline-head" role="row">
+            <span>方式</span><span>使う場面</span><span>導入条件</span>
+          </div>
+          <div class="pipeline-row" role="row">
+            <strong>手続き図形</strong>
+            <span>現在の標準。形・速度・負荷の検証</span>
+            <span>常に比較対象として残す</span>
+          </div>
+          <div class="pipeline-row" role="row">
+            <strong>SVG Path</strong>
+            <span>木、鳥、種、羽の輪郭改善</span>
+            <span>拡大時も線幅と重心を維持できる</span>
+          </div>
+          <div class="pipeline-row" role="row">
+            <strong>Sprite</strong>
+            <span>多数表示する短い反復アニメーション</span>
+            <span>同時表示時のGPU負荷が手続き図形以下</span>
+          </div>
+          <div class="pipeline-row" role="row">
+            <strong>Rive</strong>
+            <span>手紙の折り変化など状態遷移が主役の場面</span>
+            <span>状態機械がコード側の契約と一対一になる</span>
+          </div>
+          <div class="pipeline-row" role="row">
+            <strong>Shader</strong>
+            <span>霧と風の連続場</span>
+            <span>低性能端末向けのCanvas代替を残せる</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="guide-footer">
+      <p>ROUTE FOREST / VISUAL STYLE GUIDE V1</p>
+      <a href="/display?simulation=unknown-three">演出で確認する →</a>
+    </footer>
+    <script type="module" src="/style-guide.js"></script>
+  </body>
+</html>

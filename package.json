@@ -1,0 +1,15 @@
+{
+  "name": "route-forest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Technical validation service for the Route Forest installation",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test",
+    "test:watch": "node --test --watch"
+  }
+}

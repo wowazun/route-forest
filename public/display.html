@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#12333b" />
+    <meta
+      name="description"
+      content="来場者の情報通信路を鳥と木と霧で描く、情報通信路の大型展示画面。"
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/display.css" />
+    <title>情報通信路 — Exhibition Display</title>
+  </head>
+  <body>
+    <main class="exhibition" aria-labelledby="display-title">
+      <canvas id="forest-canvas" aria-hidden="true"></canvas>
+
+      <header class="display-header">
+        <div class="title-block">
+          <p class="overline">ROUTE OBSERVATORY / LIVE FIELD</p>
+          <h1 id="display-title">情報通信路</h1>
+          <p class="title-reading">じょうほう・つうしんろ</p>
+        </div>
+        <div class="telemetry">
+          <div class="connection" aria-live="polite">
+            <span id="connection-light" class="connection-light"></span>
+            <span id="connection-state">接続しています</span>
+          </div>
+          <p id="destination-state" class="destination-state">
+            DESTINATION / WAITING
+          </p>
+        </div>
+      </header>
+
+      <section class="observation-caption" aria-label="作品の説明">
+        <p>
+          会場から、来場者が選んだWebサイト方向へ、<br />
+          その瞬間に見えた道をたどっています。
+        </p>
+        <dl class="observation-counts">
+          <div>
+            <dt>育った木</dt>
+            <dd id="tree-count">0</dd>
+          </div>
+          <div>
+            <dt>届いた経路</dt>
+            <dd id="route-count">0</dd>
+          </div>
+        </dl>
+      </section>
+
+      <aside class="join-ticket" aria-label="スマートフォンから参加">
+        <div class="ticket-copy">
+          <p class="ticket-label">YOUR ROUTE</p>
+          <h2>あなたの道を<br />森へ送る</h2>
+          <p>スマートフォンで読み取ってください</p>
+          <span>route-forest.wowazun.net</span>
+        </div>
+        <img
+          class="join-qr"
+          src="/qr.svg"
+          width="212"
+          height="212"
+          alt="参加ページ https://route-forest.wowazun.net のQRコード"
+        />
+      </aside>
+
+      <div class="field-key" aria-hidden="true">
+        <span><i class="key-tree"></i>観測した地点</span>
+        <span><i class="key-fog"></i>見えない区間</span>
+        <span><i class="key-route"></i>いま届いた道</span>
+      </div>
+
+      <aside
+        id="performance-monitor"
+        class="performance-monitor"
+        aria-label="描画性能"
+        hidden
+      >
+        <div class="performance-heading">
+          <div>
+            <p>FIELD LOAD / FRAME PULSE</p>
+            <h2>描画性能検証</h2>
+          </div>
+          <strong id="performance-status">準備中</strong>
+        </div>
+        <dl class="performance-metrics">
+          <div>
+            <dt>平均 FPS</dt>
+            <dd id="performance-fps">—</dd>
+          </div>
+          <div>
+            <dt>P95 FRAME</dt>
+            <dd><span id="performance-p95">—</span><small> ms</small></dd>
+          </div>
+          <div>
+            <dt>最大 FRAME</dt>
+            <dd><span id="performance-max">—</span><small> ms</small></dd>
+          </div>
+          <div>
+            <dt>長い処理</dt>
+            <dd id="performance-long-tasks">0</dd>
+          </div>
+        </dl>
+        <div
+          id="performance-pulse"
+          class="performance-pulse"
+          aria-hidden="true"
+        ></div>
+        <p id="performance-profile" class="performance-profile"></p>
+        <p class="performance-target">
+          基準 / 50 FPS以上・P95 25ms以下（1920×1080）
+        </p>
+      </aside>
+
+      <p id="empty-message" class="empty-message">
+        森は、次の経路を待っています。
+      </p>
+
+      <noscript>
+        <p class="noscript-message">
+          この作品の表示にはJavaScriptが必要です。
+        </p>
+      </noscript>
+    </main>
+    <script type="module" src="/display.js?v=11"></script>
+  </body>
+</html>

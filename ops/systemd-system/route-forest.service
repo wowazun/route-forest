@@ -1,0 +1,36 @@
+[Unit]
+Description=Route Forest validation API
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=m-osuke
+Group=m-osuke
+WorkingDirectory=/home/m-osuke/route-forest
+Environment=NODE_ENV=production
+EnvironmentFile=/home/m-osuke/.config/route-forest/app.env
+ExecStart=/home/m-osuke/.local/bin/node /home/m-osuke/route-forest/src/index.js
+Restart=on-failure
+RestartSec=3s
+TimeoutStopSec=10s
+
+# Grant exactly the capability required for ICMP traceroute before locking
+# privilege acquisition for the service and every child process.
+CapabilityBoundingSet=CAP_NET_RAW
+AmbientCapabilities=CAP_NET_RAW
+NoNewPrivileges=true
+
+PrivateDevices=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictSUIDSGID=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

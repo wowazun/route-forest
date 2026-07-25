@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#e7eef0" />
+    <meta
+      name="description"
+      content="情報通信路を観測し、匿名化された経路として体験するインタラクティブ作品。"
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>情報通信路 — Route Forest</title>
+  </head>
+  <body>
+    <div class="page-grain" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="site-header">
+        <a class="wordmark" href="/" aria-label="情報通信路 ホーム">
+          <span class="wordmark-mark" aria-hidden="true"></span>
+          <span>情報通信路</span>
+        </a>
+        <p class="edition">ROUTE OBSERVATION / 01</p>
+      </header>
+
+      <section class="hero" aria-labelledby="page-title">
+        <div class="observation-window" aria-hidden="true">
+          <span class="window-kanji">路</span>
+          <svg viewBox="0 0 260 260" role="presentation">
+            <circle class="scope-ring scope-ring-outer" cx="130" cy="130" r="108" />
+            <circle class="scope-ring scope-ring-inner" cx="130" cy="130" r="72" />
+            <path
+              class="scope-route"
+              d="M 12 163 C 54 163, 68 98, 111 108 S 163 185, 248 88"
+            />
+            <circle class="scope-node" cx="53" cy="142" r="5" />
+            <circle class="scope-node" cx="111" cy="108" r="5" />
+            <circle class="scope-node" cx="178" cy="157" r="5" />
+            <circle class="scope-probe" cx="12" cy="163" r="7" />
+          </svg>
+          <span class="window-label">OBSERVATION WINDOW</span>
+        </div>
+
+        <div class="hero-copy">
+          <p class="eyebrow">ここから、あなたが選ぶWebサイトへ</p>
+          <h1 id="page-title">行き先を選び、<br />道をたどる。</h1>
+          <p class="hero-lead">
+            Webサイトを一つ選ぶと、会場のサーバーからそのサイト方向へ鳥が飛び、
+            その時点で観測できた情報通信路を作品へ送ります。
+          </p>
+        </div>
+      </section>
+
+      <section id="intro-panel" class="experience-panel" aria-labelledby="intro-title">
+        <div class="section-heading">
+          <p class="section-index">BEFORE DEPARTURE</p>
+          <h2 id="intro-title">観測の前に</h2>
+        </div>
+
+        <div class="fact-list">
+          <article class="fact">
+            <span class="fact-mark" aria-hidden="true">→</span>
+            <div>
+              <h3>会場からサイトへ向かう経路です</h3>
+              <p>
+                スマートフォンからの経路ではなく、会場のUbuntuサーバーから
+                選んだWebサイト方向へ向かう、その瞬間の応答可能な経路です。
+              </p>
+            </div>
+          </article>
+          <article class="fact">
+            <span class="fact-mark" aria-hidden="true">◇</span>
+            <div>
+              <h3>入力するのはWebサイトだけです</h3>
+              <p>
+                URLを貼った場合もドメイン名だけを使い、ページ内容へはアクセスしません。
+                ドメイン名は作品表示のため短時間保持しますが、解決したIPと
+                中継点の生のIPは保存・表示しません。
+              </p>
+            </div>
+          </article>
+          <article class="fact">
+            <span class="fact-mark" aria-hidden="true">≈</span>
+            <div>
+              <h3>見えない区間も通信の一部です</h3>
+              <p>
+                応答しない中継点は、通信失敗ではなく「こちらから観測できない区間」として扱います。
+              </p>
+            </div>
+          </article>
+        </div>
+
+        <form id="consent-form" class="consent-form" novalidate>
+          <label class="destination-entry" for="website-input">
+            <span class="destination-label">
+              <span>DESTINATION</span>
+              <span>鳥の行き先</span>
+            </span>
+            <span class="destination-control">
+              <input
+                id="website-input"
+                name="website"
+                type="text"
+                inputmode="url"
+                autocomplete="url"
+                autocapitalize="none"
+                spellcheck="false"
+                maxlength="512"
+                placeholder="example.com"
+                required
+              />
+              <span aria-hidden="true">↗</span>
+            </span>
+            <span class="destination-help">
+              ドメイン名またはWebサイトのURL。パス部分は使用しません。
+            </span>
+          </label>
+
+          <label class="consent-check">
+            <input id="consent-checkbox" type="checkbox" required />
+            <span class="check-shape" aria-hidden="true"></span>
+            <span>
+              上の説明を読み、選んだWebサイトへの経路観測と、
+              接続元IPの匿名化した連続操作防止への利用に同意します。
+            </span>
+          </label>
+          <p id="form-message" class="form-message" aria-live="polite"></p>
+          <button id="start-button" class="primary-action" type="submit">
+            <span>このサイトへ鳥を送る</span>
+            <span class="action-arrow" aria-hidden="true">→</span>
+          </button>
+        </form>
+      </section>
+
+      <section
+        id="measuring-panel"
+        class="experience-panel state-panel"
+        aria-labelledby="measuring-title"
+        hidden
+      >
+        <div class="section-heading">
+          <p class="section-index">IN TRANSIT</p>
+          <h2 id="measuring-title">経路を観測しています</h2>
+        </div>
+        <div class="measuring-route" aria-hidden="true">
+          <span class="measuring-line"></span>
+          <span class="measuring-node node-one"></span>
+          <span class="measuring-node node-two"></span>
+          <span class="measuring-node node-three"></span>
+          <span class="measuring-bird">›</span>
+        </div>
+        <p class="state-copy">
+          選んだWebサイトの場所を確かめ、応答を待ちながら見える中継点を集めています。
+          完全な進捗率は分からないため、数字による進捗表示は行いません。
+        </p>
+        <p id="elapsed-label" class="elapsed-label">観測開始から 0 秒</p>
+      </section>
+
+      <section
+        id="result-panel"
+        class="experience-panel state-panel"
+        aria-labelledby="result-title"
+        hidden
+      >
+        <div class="section-heading">
+          <p id="result-kicker" class="section-index">OBSERVATION COMPLETE</p>
+          <h2 id="result-title">見える道が届きました</h2>
+        </div>
+
+        <p id="result-message" class="state-copy"></p>
+
+        <dl id="result-summary" class="result-summary">
+          <div>
+            <dt>観測した地点</dt>
+            <dd id="observed-count">0</dd>
+          </div>
+          <div>
+            <dt>見えない区間</dt>
+            <dd id="unknown-count">0</dd>
+          </div>
+          <div>
+            <dt>行き先</dt>
+            <dd id="destination-host" class="destination-host">—</dd>
+          </div>
+        </dl>
+
+        <div class="route-map-wrap">
+          <p class="route-map-label">OBSERVED ROUTE</p>
+          <ol id="route-map" class="route-map" aria-label="匿名化された観測経路"></ol>
+        </div>
+
+        <button id="return-button" class="secondary-action" type="button">
+          説明へ戻る
+        </button>
+      </section>
+
+      <section
+        id="error-panel"
+        class="experience-panel state-panel"
+        aria-labelledby="error-title"
+        hidden
+      >
+        <div class="section-heading">
+          <p id="error-kicker" class="section-index">OBSERVATION PAUSED</p>
+          <h2 id="error-title">今回は観測できませんでした</h2>
+        </div>
+        <div class="error-symbol" aria-hidden="true">
+          <span></span>
+        </div>
+        <p id="error-message" class="state-copy"></p>
+        <p id="error-guidance" class="guidance"></p>
+        <button id="error-return-button" class="secondary-action" type="button">
+          説明へ戻る
+        </button>
+      </section>
+
+      <footer class="site-footer">
+        <p>通信は続いていても、すべてを観測できるとは限りません。</p>
+        <p class="footer-meta">ROUTE FOREST / TECHNICAL STUDY</p>
+      </footer>
+    </main>
+
+    <noscript>
+      <p class="noscript-message">
+        この体験にはJavaScriptが必要です。ブラウザの設定を確認してください。
+      </p>
+    </noscript>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
