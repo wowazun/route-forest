@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  createSmoothRouteChains,
   createFogTexture,
   drawBird,
   drawFog,
@@ -100,8 +101,7 @@ test("preserves the dashed route, bird, and highlight drawing commands", () => {
     context.operations.find(([operation]) => operation === "setLineDash"),
     ["setLineDash", [2, 8]],
   );
-  assert.ok(operationCount(context, "quadraticCurveTo") >= 1);
-  assert.ok(operationCount(context, "bezierCurveTo") >= 6);
+  assert.ok(operationCount(context, "bezierCurveTo") >= 7);
   assert.ok(operationCount(context, "fill") >= 6);
 
   const highlightContext = createRecordingContext();
@@ -110,8 +110,60 @@ test("preserves the dashed route, bird, and highlight drawing commands", () => {
     routeId: "route-a",
     progress: 0.25,
   });
-  assert.equal(operationCount(highlightContext, "quadraticCurveTo"), 1);
+  assert.equal(operationCount(highlightContext, "bezierCurveTo"), 1);
   assert.equal(operationCount(highlightContext, "stroke"), 1);
+});
+
+test("keeps tree anchors exact while sharing a smooth tangent at joins", () => {
+  const first = { x: 20, y: 90 };
+  const middle = { x: 110, y: 42 };
+  const last = { x: 210, y: 74 };
+  const chains = createSmoothRouteChains(
+    [
+      { from: first, to: middle, index: 0 },
+      { from: middle, to: last, index: 1 },
+    ],
+    "route-smooth",
+  );
+
+  assert.equal(chains.length, 1);
+  assert.equal(chains[0].curves.length, 2);
+  assert.equal(chains[0].start, first);
+  assert.equal(chains[0].curves[0].to, middle);
+  assert.equal(chains[0].curves[1].from, middle);
+  assert.equal(chains[0].curves[1].to, last);
+
+  const incoming = {
+    x: middle.x - chains[0].curves[0].control2.x,
+    y: middle.y - chains[0].curves[0].control2.y,
+  };
+  const outgoing = {
+    x: chains[0].curves[1].control1.x - middle.x,
+    y: chains[0].curves[1].control1.y - middle.y,
+  };
+  const cross = incoming.x * outgoing.y - incoming.y * outgoing.x;
+  const dot = incoming.x * outgoing.x + incoming.y * outgoing.y;
+  assert.ok(Math.abs(cross) < 1e-8);
+  assert.ok(dot > 0);
+});
+
+test("does not smooth across a missing fog interval", () => {
+  const chains = createSmoothRouteChains(
+    [
+      {
+        from: { x: 10, y: 20 },
+        to: { x: 70, y: 35 },
+        index: 0,
+      },
+      {
+        from: { x: 150, y: 48 },
+        to: { x: 220, y: 62 },
+        index: 3,
+      },
+    ],
+    "route-with-fog",
+  );
+  assert.equal(chains.length, 2);
 });
 
 test("draws trees and fog without mutating their logical state", () => {

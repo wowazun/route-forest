@@ -20,6 +20,134 @@ function routeBend(routeId, index) {
   return Math.sin(hashText(routeId) + index) * 34;
 }
 
+function samePoint(left, right) {
+  return (
+    left === right ||
+    (left?.x === right?.x && left?.y === right?.y)
+  );
+}
+
+function connectedRouteChains(segments) {
+  const chains = [];
+  for (const segment of segments) {
+    const current = chains.at(-1);
+    const previousSegment = current?.at(-1);
+    if (
+      !current ||
+      !samePoint(previousSegment.to, segment.from) ||
+      previousSegment.index + 1 !== segment.index
+    ) {
+      chains.push([segment]);
+    } else {
+      current.push(segment);
+    }
+  }
+  return chains;
+}
+
+function pointTangent(points, index) {
+  const point = points[index];
+  if (index === 0) {
+    const next = points[1];
+    return {
+      x: (next.x - point.x) * 0.28,
+      y: (next.y - point.y) * 0.28,
+    };
+  }
+  if (index === points.length - 1) {
+    const previous = points[index - 1];
+    return {
+      x: (point.x - previous.x) * 0.28,
+      y: (point.y - previous.y) * 0.28,
+    };
+  }
+
+  const previous = points[index - 1];
+  const next = points[index + 1];
+  const directionX = next.x - previous.x;
+  const directionY = next.y - previous.y;
+  const directionLength = Math.hypot(directionX, directionY) || 1;
+  const handleLength =
+    Math.min(
+      Math.hypot(point.x - previous.x, point.y - previous.y),
+      Math.hypot(next.x - point.x, next.y - point.y),
+    ) * 0.28;
+  return {
+    x: (directionX / directionLength) * handleLength,
+    y: (directionY / directionLength) * handleLength,
+  };
+}
+
+export function createSmoothRouteChains(segments, routeId = "route") {
+  return Object.freeze(
+    connectedRouteChains(segments).map((chain) => {
+      const points = [chain[0].from, ...chain.map((segment) => segment.to)];
+      const singleSegment = chain.length === 1;
+      const tangents = singleSegment
+        ? null
+        : points.map((_, index) => pointTangent(points, index));
+      const curves = chain.map((segment, index) => {
+        if (singleSegment) {
+          const deltaX = segment.to.x - segment.from.x;
+          const deltaY = segment.to.y - segment.from.y;
+          const length = Math.hypot(deltaX, deltaY) || 1;
+          const bend = routeBend(routeId, segment.index) * 0.38;
+          const normalX = -deltaY / length;
+          const normalY = deltaX / length;
+          return Object.freeze({
+            from: segment.from,
+            to: segment.to,
+            control1: Object.freeze({
+              x: segment.from.x + deltaX * 0.32 + normalX * bend,
+              y: segment.from.y + deltaY * 0.32 + normalY * bend,
+            }),
+            control2: Object.freeze({
+              x: segment.from.x + deltaX * 0.68 + normalX * bend,
+              y: segment.from.y + deltaY * 0.68 + normalY * bend,
+            }),
+            index: segment.index,
+          });
+        }
+        return Object.freeze({
+          from: segment.from,
+          to: segment.to,
+          control1: Object.freeze({
+            x: segment.from.x + tangents[index].x,
+            y: segment.from.y + tangents[index].y,
+          }),
+          control2: Object.freeze({
+            x: segment.to.x - tangents[index + 1].x,
+            y: segment.to.y - tangents[index + 1].y,
+          }),
+          index: segment.index,
+        });
+      });
+      return Object.freeze({
+        start: chain[0].from,
+        curves: Object.freeze(curves),
+      });
+    }),
+  );
+}
+
+export function strokeSmoothRoute(context, { segments, routeId }) {
+  for (const chain of createSmoothRouteChains(segments, routeId)) {
+    context.beginPath();
+    context.moveTo(chain.start.x, chain.start.y);
+    for (const curve of chain.curves) {
+      context.bezierCurveTo(
+        curve.control1.x,
+        curve.control1.y,
+        curve.control2.x,
+        curve.control2.y,
+        curve.to.x,
+        curve.to.y,
+      );
+    }
+    context.stroke();
+  }
+}
+
 export function createFogTexture(texture, random) {
   texture.width = 256;
   texture.height = 144;
@@ -55,23 +183,13 @@ export function drawRouteHighlight(
 
   context.save();
   context.lineCap = "round";
+  context.lineJoin = "round";
   context.lineWidth = 2.2 * pulse;
   context.shadowColor = palette.route;
   context.shadowBlur = 20 * alpha;
   context.strokeStyle = `rgba(184, 222, 213, ${alpha * 0.72})`;
 
-  for (const { from, to, index } of segments) {
-    context.beginPath();
-    context.moveTo(from.x, from.y);
-    const bend = routeBend(routeId, index);
-    context.quadraticCurveTo(
-      (from.x + to.x) / 2,
-      (from.y + to.y) / 2 + bend,
-      to.x,
-      to.y,
-    );
-    context.stroke();
-  }
+  strokeSmoothRoute(context, { segments, routeId });
   context.restore();
 }
 
@@ -113,23 +231,13 @@ export function drawRoutePath(
   context.save();
   context.lineWidth = 1.6;
   context.lineCap = "round";
+  context.lineJoin = "round";
   context.setLineDash([2, 8]);
   context.shadowColor = palette.route;
   context.shadowBlur = 12;
 
-  for (const { from, to, index } of segments) {
-    context.strokeStyle = "rgba(184, 222, 213, 0.75)";
-    context.beginPath();
-    context.moveTo(from.x, from.y);
-    const bend = routeBend(routeId, index);
-    context.quadraticCurveTo(
-      (from.x + to.x) / 2,
-      (from.y + to.y) / 2 + bend,
-      to.x,
-      to.y,
-    );
-    context.stroke();
-  }
+  context.strokeStyle = "rgba(184, 222, 213, 0.75)";
+  strokeSmoothRoute(context, { segments, routeId });
 
   drawBird(context, { ...bird, now });
   context.restore();

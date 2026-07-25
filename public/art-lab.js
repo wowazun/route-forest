@@ -15,6 +15,7 @@ import {
   drawLegacyFogArt,
   fogDimensions,
 } from "./fog-art.js";
+import { strokeSmoothRoute } from "./display-art.js";
 import { visualStyle } from "./visual-style.js";
 
 const proofs = document.querySelector("#proofs");
@@ -323,13 +324,17 @@ function drawRoute(context, points, alpha = 0.6) {
   context.save();
   context.strokeStyle = `rgba(184, 222, 213, ${alpha})`;
   context.lineWidth = 1.1;
+  context.lineCap = "round";
+  context.lineJoin = "round";
   context.setLineDash([2, 8]);
-  context.beginPath();
-  points.forEach((point, index) => {
-    if (index === 0) context.moveTo(point.x, point.y);
-    else context.lineTo(point.x, point.y);
+  strokeSmoothRoute(context, {
+    routeId: "art-lab-route",
+    segments: points.slice(0, -1).map((from, index) => ({
+      from,
+      to: points[index + 1],
+      index,
+    })),
   });
-  context.stroke();
   context.restore();
 }
 
