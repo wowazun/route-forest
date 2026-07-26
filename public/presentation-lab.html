@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="渡り路の企画書用ビジュアルを大判で調整・保存する撮影ページ"
+    />
+    <title>素材撮影室 — 渡り路</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/presentation-lab.css?v=1" />
+  </head>
+  <body>
+    <main class="studio">
+      <header class="studio-header">
+        <div>
+          <p class="kicker">渡り路 / VISUAL CAPTURE STUDIO</p>
+          <h1>素材撮影室</h1>
+        </div>
+        <p class="studio-purpose">
+          企画書に載せる造形を、大きく、同じ条件で撮るためのページです。
+        </p>
+      </header>
+
+      <div class="studio-layout">
+        <aside class="control-board" aria-label="撮影設定">
+          <section class="control-section asset-picker">
+            <h2>写すもの</h2>
+            <div class="asset-buttons" role="group" aria-label="素材">
+              <button type="button" data-asset="all">全体</button>
+              <button class="is-active" type="button" data-asset="bird">鳥</button>
+              <button type="button" data-asset="seed">種</button>
+              <button type="button" data-asset="tree">木</button>
+              <button type="button" data-asset="wind">風</button>
+              <button type="button" data-asset="message">手紙</button>
+              <button type="button" data-asset="plane">紙飛行機</button>
+              <button type="button" data-asset="feather">羽</button>
+              <button type="button" data-asset="fog">霧</button>
+            </div>
+          </section>
+
+          <section class="control-section">
+            <h2>配置</h2>
+            <label class="range-control">
+              <span>数 <output id="count-output">1</output></span>
+              <input id="count" type="range" min="1" max="24" value="1" />
+            </label>
+            <label class="range-control">
+              <span>大きさ <output id="size-output">100%</output></span>
+              <input id="size" type="range" min="40" max="220" value="100" />
+            </label>
+            <label class="range-control">
+              <span>広がり <output id="spread-output">100%</output></span>
+              <input id="spread" type="range" min="30" max="170" value="100" />
+            </label>
+            <label class="select-control">
+              <span>並べ方</span>
+              <select id="arrangement">
+                <option value="scatter">自然に散らす</option>
+                <option value="row">横一列</option>
+                <option value="grid">格子</option>
+              </select>
+            </label>
+          </section>
+
+          <section class="control-section">
+            <h2>素材の状態</h2>
+            <label class="range-control">
+              <span>木の成長 <output id="growth-output">86%</output></span>
+              <input id="growth" type="range" min="4" max="100" value="86" />
+            </label>
+            <label class="select-control">
+              <span>鳥の翼</span>
+              <select id="flap">
+                <option value="auto">羽ばたく</option>
+                <option value="-1">上げる</option>
+                <option value="0">中間</option>
+                <option value="1">下げる</option>
+              </select>
+            </label>
+            <label class="range-control">
+              <span>手紙の変化 <output id="message-output">46%</output></span>
+              <input id="message-progress" type="range" min="0" max="100" value="46" />
+            </label>
+            <label class="range-control">
+              <span>霧の濃さ <output id="fog-output">82%</output></span>
+              <input id="fog-opacity" type="range" min="10" max="100" value="82" />
+            </label>
+            <label class="range-control">
+              <span>風の粒 <output id="wind-output">100%</output></span>
+              <input id="wind-density" type="range" min="20" max="200" value="100" />
+            </label>
+          </section>
+
+          <section class="control-section">
+            <h2>撮影</h2>
+            <label class="select-control">
+              <span>書き出し解像度</span>
+              <select id="resolution">
+                <option value="1920x1080">1920 × 1080</option>
+                <option value="2560x1440">2560 × 1440</option>
+                <option value="3840x2160">3840 × 2160</option>
+              </select>
+            </label>
+            <label class="select-control">
+              <span>背景</span>
+              <select id="background">
+                <option value="night">作品の青緑</option>
+                <option value="lift">明るい青緑</option>
+                <option value="paper">資料用の淡色</option>
+                <option value="transparent">透過PNG</option>
+              </select>
+            </label>
+            <label class="check-control">
+              <input id="caption" type="checkbox" />
+              <span>素材名を入れる</span>
+            </label>
+            <label class="range-control">
+              <span>動きの速さ <output id="speed-output">100%</output></span>
+              <input id="speed" type="range" min="0" max="200" value="100" />
+            </label>
+          </section>
+
+          <div class="control-actions">
+            <button id="toggle-play" type="button">一時停止</button>
+            <button id="reset-settings" type="button">初期値へ戻す</button>
+            <button id="capture-mode" type="button">撮影表示</button>
+            <button id="save-png" class="primary-action" type="button">
+              PNGを保存
+            </button>
+          </div>
+        </aside>
+
+        <section class="capture-area" aria-label="撮影プレビュー">
+          <div class="stage-meta">
+            <div>
+              <span id="asset-name">鳥</span>
+              <span id="stage-size">1920 × 1080</span>
+            </div>
+            <p>Canvasの実寸でPNGを書き出します</p>
+          </div>
+          <div id="stage-frame" class="stage-frame">
+            <canvas id="capture-canvas" width="1920" height="1080"></canvas>
+            <button id="leave-capture" type="button">操作へ戻る</button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="/presentation-lab.js?v=1"></script>
+  </body>
+</html>

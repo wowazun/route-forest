@@ -484,6 +484,27 @@ test("serves the isolated Art Lab and vector art directions", async () => {
   });
 });
 
+test("serves the proposal presentation capture lab", async () => {
+  await withServer(async (baseUrl) => {
+    const page = await fetch(`${baseUrl}/presentation-lab`);
+    const html = await page.text();
+    assert.equal(page.status, 200);
+    assert.match(html, /素材撮影室/);
+    assert.match(html, /id="capture-canvas"/);
+
+    const stylesheet = await fetch(`${baseUrl}/presentation-lab.css`);
+    assert.equal(stylesheet.status, 200);
+    assert.match(stylesheet.headers.get("content-type"), /^text\/css/);
+
+    const controller = await fetch(`${baseUrl}/presentation-lab.js`);
+    assert.equal(controller.status, 200);
+    assert.match(
+      await controller.text(),
+      /__routeForestPresentationLab/,
+    );
+  });
+});
+
 test("rejects all client-supplied destination fields", async () => {
   await withServer(async (baseUrl) => {
     for (const field of ["target", "ip", "host", "hostname", "destination"]) {

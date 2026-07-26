@@ -56,6 +56,16 @@ const STATIC_FILES = Object.freeze({
   "/art-lab.js": ["art-lab.js", "text/javascript; charset=utf-8"],
   "/art-lab.css": ["art-lab.css", "text/css; charset=utf-8"],
   "/art-variants.js": ["art-variants.js", "text/javascript; charset=utf-8"],
+  "/presentation-lab": ["presentation-lab.html", "text/html; charset=utf-8"],
+  "/presentation-lab/": ["presentation-lab.html", "text/html; charset=utf-8"],
+  "/presentation-lab.js": [
+    "presentation-lab.js",
+    "text/javascript; charset=utf-8",
+  ],
+  "/presentation-lab.css": [
+    "presentation-lab.css",
+    "text/css; charset=utf-8",
+  ],
   "/experience-contract.js": [
     "experience-contract.js",
     "text/javascript; charset=utf-8",
