@@ -1,4 +1,3 @@
-import { visualStyle } from "./visual-style.js";
 import { drawBirdArt } from "./bird-art.js";
 import {
   drawMessageArt,
@@ -8,8 +7,10 @@ import {
   drawTreeArt,
   getTreeArtCacheKey,
 } from "./tree-art.js";
-
-const palette = visualStyle.palette;
+import {
+  drawRouteLightFlow,
+  ROUTE_ART_VERSION,
+} from "./route-art.js";
 
 function hashText(value) {
   let hash = 2166136261;
@@ -181,40 +182,17 @@ export function createFogTexture(texture, random) {
 
 export function drawRouteHighlight(
   context,
-  { segments, routeId, progress },
+  { segments, routeId, progress, color, style },
 ) {
-  const alpha = Math.pow(1 - progress, 1.7);
-  const pulse = 1 + Math.sin(progress * Math.PI * 8) * 0.15;
-  const observedSegments = segments.filter((segment) => !segment.unobserved);
-  const unobservedSegments = segments.filter((segment) => segment.unobserved);
-
-  context.save();
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  context.shadowColor = palette.route;
-
-  if (unobservedSegments.length > 0) {
-    context.setLineDash([3, 7]);
-    context.lineWidth = 1.8 * pulse;
-    context.shadowBlur = 13 * alpha;
-    context.strokeStyle = `rgba(184, 222, 213, ${alpha * 0.56})`;
-    strokeSmoothRoute(context, {
-      segments: unobservedSegments,
-      routeId,
-    });
-  }
-
-  if (observedSegments.length > 0) {
-    context.setLineDash([]);
-    context.lineWidth = 2.2 * pulse;
-    context.shadowBlur = 20 * alpha;
-    context.strokeStyle = `rgba(184, 222, 213, ${alpha * 0.72})`;
-    strokeSmoothRoute(context, {
-      segments: observedSegments,
-      routeId,
-    });
-  }
-  context.restore();
+  return drawRouteLightFlow(context, {
+    segments,
+    routeId,
+    progress,
+    style: {
+      color: color || "#d5a24b",
+      ...style,
+    },
+  });
 }
 
 export function drawBird(
@@ -293,31 +271,14 @@ export function drawRoutePath(
   context,
   { segments, routeId, bird, now },
 ) {
-  const hasUnobserved = segments.some((segment) => segment.unobserved);
-  const observedSegments = hasUnobserved
-    ? segments.filter((segment) => !segment.unobserved)
-    : segments;
-
+  void segments;
+  void routeId;
   context.save();
-  context.lineWidth = 1.6;
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  context.setLineDash([2, 8]);
-  context.shadowColor = palette.route;
-
-  if (hasUnobserved) {
-    context.shadowBlur = 7;
-    context.strokeStyle = "rgba(184, 222, 213, 0.48)";
-    strokeSmoothRoute(context, { segments, routeId });
-  }
-
-  context.shadowBlur = 12;
-  context.strokeStyle = "rgba(184, 222, 213, 0.75)";
-  strokeSmoothRoute(context, { segments: observedSegments, routeId });
-
   drawBird(context, { ...bird, now });
   context.restore();
 }
+
+export { ROUTE_ART_VERSION };
 
 export function drawTree(context, { tree, position, now, alpha = 1 }) {
   void now;

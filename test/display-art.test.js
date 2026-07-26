@@ -89,7 +89,7 @@ test("builds the existing fog texture with seven radial gradients", () => {
   }
 });
 
-test("preserves the dashed route, bird, and highlight drawing commands", () => {
+test("keeps the route hidden during flight and draws moving highlight marks", () => {
   const context = createRecordingContext();
   const segments = [
     {
@@ -105,10 +105,7 @@ test("preserves the dashed route, bird, and highlight drawing commands", () => {
     bird: { x: 42, y: 31, angle: 0.4 },
     now: 1_200,
   });
-  assert.deepEqual(
-    context.operations.find(([operation]) => operation === "setLineDash"),
-    ["setLineDash", [2, 8]],
-  );
+  assert.equal(operationCount(context, "setLineDash"), 0);
   assert.ok(operationCount(context, "bezierCurveTo") >= 7);
   assert.ok(operationCount(context, "fill") >= 6);
 
@@ -118,11 +115,12 @@ test("preserves the dashed route, bird, and highlight drawing commands", () => {
     routeId: "route-a",
     progress: 0.25,
   });
-  assert.equal(operationCount(highlightContext, "bezierCurveTo"), 1);
-  assert.equal(operationCount(highlightContext, "stroke"), 1);
+  assert.ok(operationCount(highlightContext, "lineTo") > 4);
+  assert.ok(operationCount(highlightContext, "ellipse") >= 3);
+  assert.ok(operationCount(highlightContext, "stroke") > 4);
 });
 
-test("draws a subdued continuous dotted path beneath fog", () => {
+test("does not draw a normal route beneath fog", () => {
   const context = createRecordingContext();
   drawRoutePath(context, {
     segments: [
@@ -144,14 +142,15 @@ test("draws a subdued continuous dotted path beneath fog", () => {
     now: 1_500,
   });
 
-  const strokeStyles = context.operations
+  const routeStrokeStyles = context.operations
     .filter(([operation, property]) => operation === "set" && property === "strokeStyle")
-    .map(([, , value]) => value);
-  assert.ok(strokeStyles.includes("rgba(184, 222, 213, 0.48)"));
-  assert.ok(strokeStyles.includes("rgba(184, 222, 213, 0.75)"));
+    .map(([, , value]) => value)
+    .filter((value) => String(value).includes("184, 222, 213"));
+  assert.deepEqual(routeStrokeStyles, []);
+  assert.equal(operationCount(context, "setLineDash"), 0);
 });
 
-test("keeps highlighted fog intervals dotted and softly illuminated", () => {
+test("never draws a highlighted line through an unobserved interval", () => {
   const context = createRecordingContext();
   drawRouteHighlight(context, {
     segments: [
@@ -172,11 +171,19 @@ test("keeps highlighted fog intervals dotted and softly illuminated", () => {
     progress: 0.25,
   });
 
-  const dashPatterns = context.operations
-    .filter(([operation]) => operation === "setLineDash")
-    .map(([, value]) => value);
-  assert.deepEqual(dashPatterns, [[3, 7], []]);
-  assert.equal(operationCount(context, "stroke"), 2);
+  assert.equal(operationCount(context, "setLineDash"), 0);
+  const routeCoordinates = context.operations
+    .filter(([operation]) => operation === "lineTo")
+    .flatMap(([, x, y]) => [x, y]);
+  assert.ok(routeCoordinates.every((value) => Number.isFinite(value)));
+  assert.ok(
+    context.operations
+      .filter(([operation]) => operation === "set")
+      .every(([, property, value]) =>
+        property !== "strokeStyle" ||
+        !String(value).includes("184, 222, 213"),
+      ),
+  );
 });
 
 test("keeps tree anchors exact while sharing a smooth tangent at joins", () => {

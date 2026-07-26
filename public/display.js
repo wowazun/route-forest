@@ -20,7 +20,7 @@ import {
   drawRoutePath,
   drawTree,
   getTreeArtCacheKey,
-} from "./display-art.js?v=3";
+} from "./display-art.js?v=4";
 import {
   birdWorldAnchor,
   smoothBirdHeading,
@@ -683,16 +683,6 @@ function completeFlight(flight, now) {
     angle: arrivalAngle,
     name: "letter",
   });
-  state.highlights.push({
-    flightId: flight.id,
-    points: points.map((point) => ({
-      x: point.x,
-      y: point.y,
-      source: { kind: point.source.kind },
-    })),
-    bornAt: now,
-    life: prefersReducedMotion ? 1_200 : visualStyle.motion.routeHighlightMs,
-  });
   if (flight.controller && state.endedControllers.has(flight.id)) return;
   state.letters.push({
     flightId: flight.id,
@@ -1155,10 +1145,22 @@ function drawHighlight(highlight, now) {
   const plane = state.planes.find(
     (candidate) => candidate.flightId === highlight.flightId,
   );
+  const points = highlight.points.map((point) => {
+    if (point.source?.kind !== "tree") return point;
+    const tree = state.trees.get(point.source.nodeId);
+    return {
+      ...point,
+      source: {
+        ...point.source,
+        size: tree?.size ?? point.source.size,
+      },
+    };
+  });
   drawRouteHighlight(context, {
-    segments: routeHighlightSegments(highlight.points, plane),
+    segments: routeHighlightSegments(points, plane),
     routeId: highlight.flightId,
     progress,
+    color: highlight.color,
   });
 }
 
@@ -1335,9 +1337,9 @@ function draw(now) {
     context.translate(state.width * -0.5, state.height * -0.5);
   }
   drawBackground(now);
-  for (const highlight of state.highlights) drawHighlight(highlight, now);
   for (const flight of state.flights) drawFlightRoute(flight, now);
   drawTreeLayer(now);
+  for (const highlight of state.highlights) drawHighlight(highlight, now);
   for (const seed of state.seeds) drawSeed(seed, now);
   for (const feather of state.feathers) drawFeather(feather, now);
   for (const fog of state.fogs) {
@@ -1618,10 +1620,20 @@ function connectLiveEvents() {
         points: waypointPositions(route).map((point) => ({
           x: point.x,
           y: point.y,
-          source: { kind: point.source.kind },
+          source:
+            point.source.kind === "tree"
+              ? {
+                  kind: "tree",
+                  nodeId: point.source.tree.nodeId,
+                  size: point.source.tree.size,
+                }
+              : { kind: point.source.kind },
         })),
         bornAt: now,
-        life: 4_000,
+        life: prefersReducedMotion
+          ? 1_200
+          : visualStyle.motion.routeHighlightMs,
+        color: route.controller?.color || palette.seed,
       });
     } catch {
       // Invalid highlight events are ignored.

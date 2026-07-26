@@ -9,7 +9,7 @@
     />
     <title>鳥と木と霧の造形実験 — Route Forest Art Lab</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/art-lab.css" />
+    <link rel="stylesheet" href="/art-lab.css?v=2" />
   </head>
   <body>
     <main class="art-lab">
@@ -61,6 +61,9 @@
           </button>
           <button type="button" data-mode="plane-wind-lab">
             PLANE + WIND
+          </button>
+          <button type="button" data-mode="route-lab">
+            ROUTE LIGHT
           </button>
           <button type="button" data-mode="feather-lab">
             FEATHER LAB
@@ -391,6 +394,71 @@
         <button id="wind-reset" class="message-replay" type="button">RESET PLANE</button>
       </section>
 
+      <section id="route-controls" class="route-controls" aria-label="経路を流れる光の確認">
+        <label class="route-preset">
+          <span>ROUTE PRESET</span>
+          <select id="route-preset">
+            <option value="legacy">01 従来の発光線</option>
+            <option value="brush">02 不規則な筆線</option>
+            <option value="particles">03 光粒子だけ</option>
+            <option value="particles-trail">04 光粒子＋余韻</option>
+            <option value="complete" selected>05 光＋余韻＋木の反応</option>
+            <option value="fog">06 途中に霧がある経路</option>
+            <option value="multi-segment">07 複数の観測区間</option>
+            <option value="multi-user">08 複数ユーザ</option>
+            <option value="long">09 長い経路</option>
+            <option value="short">10 短い経路</option>
+          </select>
+        </label>
+        <label>
+          <span>PROGRESS <output id="route-progress-output">0%</output></span>
+          <input id="route-progress" type="range" min="0" max="1000" value="0" />
+        </label>
+        <label>
+          <span>LIGHTS <output id="route-count-output">4</output></span>
+          <input id="route-count" type="range" min="3" max="6" value="4" />
+        </label>
+        <label>
+          <span>SPEED <output id="route-speed-output">100%</output></span>
+          <input id="route-speed" type="range" min="40" max="220" value="100" />
+        </label>
+        <label>
+          <span>LIGHT SIZE <output id="route-size-output">100%</output></span>
+          <input id="route-size" type="range" min="40" max="200" value="100" />
+        </label>
+        <label>
+          <span>BRIGHTNESS <output id="route-brightness-output">72%</output></span>
+          <input id="route-brightness" type="range" min="20" max="100" value="72" />
+        </label>
+        <label>
+          <span>TAIL <output id="route-tail-output">100%</output></span>
+          <input id="route-tail" type="range" min="20" max="180" value="100" />
+        </label>
+        <label>
+          <span>TRACE WIDTH <output id="route-trail-width-output">100%</output></span>
+          <input id="route-trail-width" type="range" min="40" max="220" value="100" />
+        </label>
+        <label>
+          <span>TRACE LIFE <output id="route-trail-life-output">58%</output></span>
+          <input id="route-trail-life" type="range" min="10" max="100" value="58" />
+        </label>
+        <label>
+          <span>BREAKUP <output id="route-breakup-output">42%</output></span>
+          <input id="route-breakup" type="range" min="0" max="85" value="42" />
+        </label>
+        <label>
+          <span>CURVE WANDER <output id="route-wander-output">100%</output></span>
+          <input id="route-wander" type="range" min="0" max="180" value="100" />
+        </label>
+        <label>
+          <span>TREE REACTION <output id="route-tree-output">72%</output></span>
+          <input id="route-tree" type="range" min="0" max="100" value="72" />
+        </label>
+        <button id="route-replay" class="message-replay" type="button">
+          REPLAY FLOW
+        </button>
+      </section>
+
       <section id="proofs" class="proofs" aria-label="鳥と木の造形比較"></section>
 
       <section class="evaluation" aria-labelledby="evaluation-title">
@@ -427,6 +495,6 @@
         <a id="selected-link" href="/art-lab">選択中の案へのリンク</a>
       </footer>
     </main>
-    <script type="module" src="/art-lab.js?v=3"></script>
+    <script type="module" src="/art-lab.js?v=4"></script>
   </body>
 </html>

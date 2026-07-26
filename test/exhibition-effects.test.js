@@ -60,7 +60,7 @@ test("does not falsely illuminate unobserved fog intervals", () => {
   );
 });
 
-test("keeps the bird travel path dotted through unobserved fog intervals", () => {
+test("marks unobserved travel intervals so the renderer can omit them", () => {
   const points = [
     { source: { kind: "tree" }, x: 0, y: 0 },
     { source: { kind: "tree" }, x: 1, y: 1 },
@@ -99,7 +99,7 @@ test("extends a route highlight to the moving owned paper plane", () => {
   assert.equal(moved.at(-1).to.y, 95);
 });
 
-test("highlights a fog endpoint with dots but does not extend it to the plane", () => {
+test("keeps a fog endpoint unobserved and does not extend it to the plane", () => {
   const points = [
     { source: { kind: "tree" }, x: 10, y: 20 },
     { source: { kind: "fog" }, x: 50, y: 40 },

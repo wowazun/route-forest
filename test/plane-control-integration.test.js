@@ -3,12 +3,27 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("connects the mobile controller and display through owned server events", async () => {
-  const [app, page, styles, display, displayPage, server] = await Promise.all([
+  const [
+    app,
+    page,
+    styles,
+    display,
+    displayPage,
+    displayArt,
+    routeArt,
+    artLab,
+    artLabPage,
+    server,
+  ] = await Promise.all([
     readFile(new URL("../public/app.js", import.meta.url), "utf8"),
     readFile(new URL("../public/index.html", import.meta.url), "utf8"),
     readFile(new URL("../public/styles.css", import.meta.url), "utf8"),
     readFile(new URL("../public/display.js", import.meta.url), "utf8"),
     readFile(new URL("../public/display.html", import.meta.url), "utf8"),
+    readFile(new URL("../public/display-art.js", import.meta.url), "utf8"),
+    readFile(new URL("../public/route-art.js", import.meta.url), "utf8"),
+    readFile(new URL("../public/art-lab.js", import.meta.url), "utf8"),
+    readFile(new URL("../public/art-lab.html", import.meta.url), "utf8"),
     readFile(new URL("../src/http/server.js", import.meta.url), "utf8"),
   ]);
 
@@ -57,7 +72,7 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(styles, /\.controller-vector\s*\{[^}]*display:\s*none/s);
   assert.match(display, /source\.addEventListener\("plane-control"/);
   assert.match(display, /source\.addEventListener\("route-highlight"/);
-  assert.match(display, /routeHighlightSegments\(highlight\.points, plane\)/);
+  assert.match(display, /routeHighlightSegments\(points, plane\)/);
   assert.match(display, /source\.addEventListener\("controller-ended"/);
   assert.match(display, /Number\.POSITIVE_INFINITY/);
   assert.match(display, /paper: letter\.controller\.color/);
@@ -91,13 +106,38 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /mote\.history\.length > 7/);
   assert.match(display, /context\.quadraticCurveTo\(/);
   assert.doesNotMatch(display, /mote\.x \* state\.width/);
-  assert.match(displayPage, /display\.js\?v=43/);
+  assert.match(displayPage, /display\.js\?v=44/);
   assert.match(display, /treeFieldSpread\(existing\.length\)/);
   assert.match(display, /if \(clearance >= 1\) return \{ nx, ny \}/);
   assert.match(display, /context\.scale\(calibration\.artScale/);
   assert.match(display, /--qr-scale/);
   assert.match(display, /route-forest-display-calibration-v1/);
   assert.match(display, /segments: travelRouteSegments\(points\)/);
+  assert.match(display, /life:\s*prefersReducedMotion[\s\S]*visualStyle\.motion\.routeHighlightMs/);
+  assert.doesNotMatch(
+    display,
+    /function completeFlight[\s\S]*?state\.highlights\.push[\s\S]*?function updateFlights/,
+  );
+  assert.match(displayArt, /from "\.\/route-art\.js"/);
+  assert.match(routeArt, /ROUTE_ART_VERSION/);
+  assert.match(routeArt, /drawRouteLightFlow/);
+  assert.match(artLab, /from "\.\/route-art\.js"/);
+  assert.match(artLab, /drawRouteLightFlow/);
+  assert.match(artLabPage, /data-mode="route-lab"/);
+  for (const preset of [
+    "legacy",
+    "brush",
+    "particles",
+    "particles-trail",
+    "complete",
+    "fog",
+    "multi-segment",
+    "multi-user",
+    "long",
+    "short",
+  ]) {
+    assert.match(artLabPage, new RegExp(`value="${preset}"`));
+  }
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,

@@ -209,7 +209,8 @@ a {
 .feather-controls,
 .fog-controls,
 .message-controls,
-.wind-controls {
+.wind-controls,
+.route-controls {
   display: none;
   grid-template-columns: minmax(210px, 1.4fr) repeat(8, minmax(104px, 1fr));
   gap: 22px;
@@ -243,6 +244,10 @@ body.is-plane-wind-lab .wind-controls {
   display: grid;
 }
 
+body.is-route-lab .route-controls {
+  display: grid;
+}
+
 body.is-bird-lab .proof:not(.is-candidate) {
   display: none;
 }
@@ -263,11 +268,16 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
   display: none;
 }
 
+body.is-route-lab .proof:not(.is-candidate) {
+  display: none;
+}
+
 .bird-controls label > span,
 .feather-controls label > span,
 .fog-controls label > span,
 .message-controls label > span,
-.wind-controls label > span {
+.wind-controls label > span,
+.route-controls label > span {
   display: flex;
   justify-content: space-between;
   margin-bottom: 9px;
@@ -277,7 +287,8 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
 .feather-controls output,
 .fog-controls output,
 .message-controls output,
-.wind-controls output {
+.wind-controls output,
+.route-controls output {
   color: var(--paper);
 }
 
@@ -290,7 +301,9 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
 .message-controls input,
 .message-controls select,
 .wind-controls input,
-.wind-controls select {
+.wind-controls select,
+.route-controls input,
+.route-controls select {
   width: 100%;
   accent-color: var(--seed);
 }
@@ -299,7 +312,8 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
 .feather-controls select,
 .fog-controls select,
 .message-controls select,
-.wind-controls select {
+.wind-controls select,
+.route-controls select {
   min-height: 35px;
   padding: 0 9px;
   border: 1px solid rgba(213, 162, 75, 0.46);
@@ -318,6 +332,8 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
 .message-controls input:focus-visible,
 .wind-controls select:focus-visible,
 .wind-controls input:focus-visible,
+.route-controls select:focus-visible,
+.route-controls input:focus-visible,
 .wind-control-pad:focus-visible,
 .message-replay:focus-visible,
 .lab-controls button:focus-visible {
@@ -640,6 +656,10 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
     grid-template-columns: repeat(4, minmax(120px, 1fr));
   }
 
+  .route-controls {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+  }
+
   .proofs {
     grid-template-columns: 1fr;
   }
@@ -729,6 +749,11 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
   }
 
   .wind-controls {
+    grid-template-columns: 1fr 1fr;
+    padding: 20px;
+  }
+
+  .route-controls {
     grid-template-columns: 1fr 1fr;
     padding: 20px;
   }

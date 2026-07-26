@@ -26,6 +26,7 @@ const STATIC_FILES = Object.freeze({
   "/display/": ["display.html", "text/html; charset=utf-8"],
   "/display.js": ["display.js", "text/javascript; charset=utf-8"],
   "/display-art.js": ["display-art.js", "text/javascript; charset=utf-8"],
+  "/route-art.js": ["route-art.js", "text/javascript; charset=utf-8"],
   "/bird-art.js": ["bird-art.js", "text/javascript; charset=utf-8"],
   "/feather-art.js": ["feather-art.js", "text/javascript; charset=utf-8"],
   "/message-art.js": ["message-art.js", "text/javascript; charset=utf-8"],

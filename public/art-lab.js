@@ -15,7 +15,7 @@ import {
   drawLegacyFogArt,
   fogDimensions,
 } from "./fog-art.js";
-import { strokeSmoothRoute } from "./display-art.js";
+import { strokeSmoothRoute } from "./display-art.js?v=4";
 import {
   drawLegacyMessageArt,
   drawMessageArt,
@@ -35,6 +35,10 @@ import {
   drawFeatherArt,
   featherPoseAt,
 } from "./feather-art.js?v=2";
+import {
+  drawRouteLightFlow,
+  ROUTE_ART_VERSION,
+} from "./route-art.js";
 import { visualStyle } from "./visual-style.js";
 
 const proofs = document.querySelector("#proofs");
@@ -157,6 +161,32 @@ const windOutputs = {
   radius: document.querySelector("#wind-radius-output"),
   seed: document.querySelector("#wind-seed-output"),
 };
+const routePreset = document.querySelector("#route-preset");
+const routeProgress = document.querySelector("#route-progress");
+const routeCount = document.querySelector("#route-count");
+const routeSpeed = document.querySelector("#route-speed");
+const routeSize = document.querySelector("#route-size");
+const routeBrightness = document.querySelector("#route-brightness");
+const routeTail = document.querySelector("#route-tail");
+const routeTrailWidth = document.querySelector("#route-trail-width");
+const routeTrailLife = document.querySelector("#route-trail-life");
+const routeBreakup = document.querySelector("#route-breakup");
+const routeWander = document.querySelector("#route-wander");
+const routeTree = document.querySelector("#route-tree");
+const routeReplay = document.querySelector("#route-replay");
+const routeOutputs = {
+  progress: document.querySelector("#route-progress-output"),
+  count: document.querySelector("#route-count-output"),
+  speed: document.querySelector("#route-speed-output"),
+  size: document.querySelector("#route-size-output"),
+  brightness: document.querySelector("#route-brightness-output"),
+  tail: document.querySelector("#route-tail-output"),
+  trailWidth: document.querySelector("#route-trail-width-output"),
+  trailLife: document.querySelector("#route-trail-life-output"),
+  breakup: document.querySelector("#route-breakup-output"),
+  wander: document.querySelector("#route-wander-output"),
+  tree: document.querySelector("#route-tree-output"),
+};
 const fogRenderer = createFogRenderer({
   createCanvas: () => document.createElement("canvas"),
 });
@@ -180,6 +210,7 @@ const modes = new Set([
   "fog-lab",
   "message-lab",
   "plane-wind-lab",
+  "route-lab",
 ]);
 let mode = modes.has(searchParameters.get("mode"))
   ? searchParameters.get("mode")
@@ -195,6 +226,7 @@ let sceneTime = 2_400;
 let flapAutomatic = true;
 let featherAutomatic = true;
 let messageAutomatic = false;
+let routeAutomatic = true;
 let windPadPointer = null;
 let windFieldCache = null;
 let windFieldCacheKey = "";
@@ -277,6 +309,19 @@ const WIND_PRESETS = Object.freeze({
   "release-to-wind": Object.freeze({ wind: 30, control: 80, trees: "large", x: 65, y: -18, enabled: true, tree: 52, release: true }),
 });
 
+const ROUTE_PRESETS = Object.freeze({
+  legacy: Object.freeze({ mode: "legacy", scene: "standard", automatic: true }),
+  brush: Object.freeze({ mode: "brush", scene: "standard", automatic: false, progress: 1 }),
+  particles: Object.freeze({ mode: "particles", scene: "standard", automatic: true }),
+  "particles-trail": Object.freeze({ mode: "particles-trail", scene: "standard", automatic: true }),
+  complete: Object.freeze({ mode: "complete", scene: "standard", automatic: true }),
+  fog: Object.freeze({ mode: "complete", scene: "fog", automatic: true }),
+  "multi-segment": Object.freeze({ mode: "complete", scene: "multi-segment", automatic: true }),
+  "multi-user": Object.freeze({ mode: "complete", scene: "multi-user", automatic: true }),
+  long: Object.freeze({ mode: "complete", scene: "long", automatic: true }),
+  short: Object.freeze({ mode: "complete", scene: "short", automatic: true }),
+});
+
 function updateBirdControlOutputs() {
   birdOutputs.flap.textContent = flapAutomatic
     ? "AUTO"
@@ -355,6 +400,41 @@ function updateWindControlOutputs() {
   windOutputs.tree.textContent = (Number(windTree.value) / 100).toFixed(2);
   windOutputs.radius.textContent = windRadius.value;
   windOutputs.seed.textContent = windSeed.value;
+}
+
+function updateRouteControlOutputs(
+  progressValue = Number(routeProgress.value) / 1000,
+) {
+  routeOutputs.progress.textContent = `${Math.round(progressValue * 100)}%`;
+  routeOutputs.count.textContent = routeCount.value;
+  routeOutputs.speed.textContent = `${routeSpeed.value}%`;
+  routeOutputs.size.textContent = `${routeSize.value}%`;
+  routeOutputs.brightness.textContent = `${routeBrightness.value}%`;
+  routeOutputs.tail.textContent = `${routeTail.value}%`;
+  routeOutputs.trailWidth.textContent = `${routeTrailWidth.value}%`;
+  routeOutputs.trailLife.textContent = `${routeTrailLife.value}%`;
+  routeOutputs.breakup.textContent = `${routeBreakup.value}%`;
+  routeOutputs.wander.textContent = `${routeWander.value}%`;
+  routeOutputs.tree.textContent = `${routeTree.value}%`;
+}
+
+function applyRoutePreset(name) {
+  const selected = ROUTE_PRESETS[name] || ROUTE_PRESETS.complete;
+  routePreset.value = name in ROUTE_PRESETS ? name : "complete";
+  routeAutomatic = selected.automatic !== false;
+  routeProgress.value = String(
+    Math.round((selected.progress ?? 0) * 1000),
+  );
+  if (routeAutomatic) {
+    sceneTime = 0;
+    paused = false;
+    toggleMotion.classList.remove("is-selected");
+  }
+  updateRouteControlOutputs(selected.progress ?? 0);
+  const url = new URL(window.location.href);
+  url.searchParams.set("routePreset", routePreset.value);
+  window.history.replaceState({}, "", url);
+  selectedLink.href = url.pathname + url.search;
 }
 
 function resetWindProofs() {
@@ -1639,6 +1719,210 @@ function drawFeatherWorkbench(proof, time) {
   proof.article.dataset.featherBarbs = featherBarbs.value;
 }
 
+function routeLabTree(width, height, x, y, id, size = 74) {
+  return {
+    x: width * x,
+    y: height * y,
+    groundY: height * y + size * 0.54,
+    source: {
+      kind: "tree",
+      nodeId: id,
+      size,
+    },
+  };
+}
+
+function routeLabFog(width, height, x, y, id) {
+  return {
+    x: width * x,
+    y: height * y,
+    source: {
+      kind: "fog",
+      nodeId: id,
+    },
+  };
+}
+
+function routeLabSegments(points) {
+  return points.slice(0, -1).map((from, index) => {
+    const to = points[index + 1];
+    return {
+      from,
+      to,
+      index,
+      unobserved:
+        from.source?.kind === "fog" || to.source?.kind === "fog",
+    };
+  });
+}
+
+function routeLabRoutes(width, height, scene) {
+  const standard = [
+    routeLabTree(width, height, 0.13, 0.67, "route-a", 70),
+    routeLabTree(width, height, 0.38, 0.43, "route-b", 84),
+    routeLabTree(width, height, 0.64, 0.61, "route-c", 76),
+    routeLabTree(width, height, 0.87, 0.37, "route-d", 90),
+  ];
+  if (scene === "short") {
+    return [
+      {
+        routeId: "art-lab-short",
+        color: "#d5a24b",
+        points: [standard[1], standard[2]],
+      },
+    ];
+  }
+  if (scene === "long") {
+    return [
+      {
+        routeId: "art-lab-long",
+        color: "#d5a24b",
+        points: [
+          routeLabTree(width, height, 0.08, 0.66, "long-a", 66),
+          routeLabTree(width, height, 0.22, 0.39, "long-b", 78),
+          routeLabTree(width, height, 0.36, 0.62, "long-c", 72),
+          routeLabTree(width, height, 0.5, 0.34, "long-d", 88),
+          routeLabTree(width, height, 0.64, 0.57, "long-e", 74),
+          routeLabTree(width, height, 0.78, 0.4, "long-f", 82),
+          routeLabTree(width, height, 0.91, 0.6, "long-g", 72),
+        ],
+      },
+    ];
+  }
+  if (scene === "fog") {
+    return [
+      {
+        routeId: "art-lab-fog-route",
+        color: "#d5a24b",
+        points: [
+          routeLabTree(width, height, 0.08, 0.62, "fog-a", 72),
+          routeLabTree(width, height, 0.3, 0.4, "fog-b", 80),
+          routeLabFog(width, height, 0.5, 0.5, "fog-gap"),
+          routeLabTree(width, height, 0.68, 0.58, "fog-c", 76),
+          routeLabTree(width, height, 0.9, 0.36, "fog-d", 88),
+        ],
+      },
+    ];
+  }
+  if (scene === "multi-user") {
+    return [
+      {
+        routeId: "art-lab-user-amber",
+        color: "#d5a24b",
+        points: standard,
+      },
+      {
+        routeId: "art-lab-user-coral",
+        color: "#c77968",
+        points: [
+          routeLabTree(width, height, 0.1, 0.32, "user-b-a", 64),
+          routeLabTree(width, height, 0.34, 0.66, "user-b-b", 74),
+          routeLabTree(width, height, 0.62, 0.36, "user-b-c", 82),
+          routeLabTree(width, height, 0.9, 0.68, "user-b-d", 68),
+        ],
+      },
+    ];
+  }
+  if (scene === "multi-segment") {
+    return [
+      {
+        routeId: "art-lab-multiple-segments",
+        color: "#d5a24b",
+        points: [
+          ...standard,
+          routeLabTree(width, height, 0.93, 0.66, "route-e", 68),
+        ],
+      },
+    ];
+  }
+  return [
+    {
+      routeId: "art-lab-standard-route",
+      color: "#d5a24b",
+      points: standard,
+    },
+  ];
+}
+
+function drawRouteWorkbench(proof, time) {
+  const { context, width, height, variant } = proof;
+  const selected = ROUTE_PRESETS[routePreset.value] || ROUTE_PRESETS.complete;
+  const progress = routeAutomatic
+    ? (time * 0.00013 * (Number(routeSpeed.value) / 100)) % 1
+    : Number(routeProgress.value) / 1000;
+  if (routeAutomatic) routeProgress.value = String(Math.round(progress * 1000));
+  updateRouteControlOutputs(progress);
+  const routes = routeLabRoutes(width, height, selected.scene);
+  const trees = new Map();
+  const fogs = [];
+  for (const route of routes) {
+    for (const point of route.points) {
+      if (point.source?.kind === "tree") {
+        trees.set(point.source.nodeId, point);
+      } else if (point.source?.kind === "fog") {
+        fogs.push(point);
+      }
+    }
+  }
+
+  for (const tree of trees.values()) {
+    drawTreeVariant(context, variant.id, {
+      x: tree.x,
+      y: tree.groundY,
+      size: tree.source.size,
+      count: Math.round(tree.source.size * 0.42),
+      time,
+      seed: tree.source.nodeId,
+    });
+  }
+
+  for (const [routeIndex, route] of routes.entries()) {
+    const routeProgressValue =
+      selected.scene === "multi-user"
+        ? (progress + routeIndex * 0.18) % 1
+        : progress;
+    drawRouteLightFlow(context, {
+      segments: routeLabSegments(route.points),
+      routeId: route.routeId,
+      progress: routeProgressValue,
+      style: {
+        mode: selected.mode,
+        color: route.color,
+        lightCount: Number(routeCount.value),
+        lightSize: Number(routeSize.value) / 100,
+        brightness: Number(routeBrightness.value) / 100,
+        tailLength: 0.085 * (Number(routeTail.value) / 100),
+        trailWidth: Number(routeTrailWidth.value) / 100,
+        trailPersistence: Number(routeTrailLife.value) / 100,
+        trailBreakup: Number(routeBreakup.value) / 100,
+        curveWander: Number(routeWander.value) / 100,
+        treeReaction: Number(routeTree.value) / 100,
+      },
+    });
+  }
+
+  for (const fog of fogs) {
+    drawSharedFog(context, fog.x, fog.y, 78, time, {
+      seed: fog.source.nodeId,
+      hopCount: 3,
+      pixelRatio: proof.pixelRatio,
+    });
+  }
+
+  context.fillStyle = "rgba(231, 238, 240, 0.38)";
+  context.font = '10px "SFMono-Regular", Consolas, monospace';
+  context.fillText(
+    `${ROUTE_ART_VERSION} / ${routePreset.value.toUpperCase()}`,
+    20,
+    30,
+  );
+  proof.frameCount += 1;
+  proof.article.dataset.frames = String(proof.frameCount);
+  proof.article.dataset.mode = mode;
+  proof.article.dataset.routePreset = routePreset.value;
+  proof.article.dataset.routeProgress = progress.toFixed(3);
+}
+
 function drawProof(proof, time) {
   const { context, width, height, variant } = proof;
   if (width <= 0 || height <= 0) return;
@@ -1648,7 +1932,12 @@ function drawProof(proof, time) {
   gradient.addColorStop(1, visualStyle.palette.night);
   context.fillStyle = gradient;
   context.fillRect(0, 0, width, height);
-  drawWind(context, width, height, time);
+  if (mode !== "route-lab") drawWind(context, width, height, time);
+
+  if (mode === "route-lab") {
+    drawRouteWorkbench(proof, time);
+    return;
+  }
 
   if (mode === "feather-lab") {
     drawFeatherWorkbench(proof, time);
@@ -1813,6 +2102,7 @@ function updateModePresentation() {
     "is-plane-wind-lab",
     mode === "plane-wind-lab",
   );
+  document.body.classList.toggle("is-route-lab", mode === "route-lab");
   for (const candidate of modeButtons) {
     candidate.classList.toggle("is-selected", candidate.dataset.mode === mode);
   }
@@ -1877,6 +2167,9 @@ messagePreset.addEventListener("change", () => {
 });
 windPreset.addEventListener("change", () => {
   applyWindPreset(windPreset.value);
+});
+routePreset.addEventListener("change", () => {
+  applyRoutePreset(routePreset.value);
 });
 birdFlap.addEventListener("input", () => {
   flapAutomatic = false;
@@ -1951,6 +2244,26 @@ for (const control of [
 for (const control of [windTrail, windVectors]) {
   control.addEventListener("input", updateWindControlOutputs);
 }
+routeProgress.addEventListener("input", () => {
+  routeAutomatic = false;
+  updateRouteControlOutputs();
+});
+for (const control of [
+  routeCount,
+  routeSpeed,
+  routeSize,
+  routeBrightness,
+  routeTail,
+  routeTrailWidth,
+  routeTrailLife,
+  routeBreakup,
+  routeWander,
+  routeTree,
+]) {
+  control.addEventListener("input", () => {
+    updateRouteControlOutputs();
+  });
+}
 function setWindPad(clientX, clientY) {
   const rect = windControlPad.getBoundingClientRect();
   const radius = rect.width * 0.36;
@@ -1998,6 +2311,14 @@ windControlPad.addEventListener("pointercancel", (event) => {
   releaseWindPad(event.pointerId);
 });
 windReset.addEventListener("click", resetWindProofs);
+routeReplay.addEventListener("click", () => {
+  routeAutomatic = true;
+  routeProgress.value = "0";
+  sceneTime = 0;
+  paused = false;
+  toggleMotion.classList.remove("is-selected");
+  updateRouteControlOutputs(0);
+});
 messageReplay.addEventListener("click", () => {
   if (
     messagePreset.value !== "sequence" &&
@@ -2043,6 +2364,11 @@ applyWindPreset(
   WIND_PRESETS[searchParameters.get("windPreset")]
     ? searchParameters.get("windPreset")
     : "combined",
+);
+applyRoutePreset(
+  ROUTE_PRESETS[searchParameters.get("routePreset")]
+    ? searchParameters.get("routePreset")
+    : "complete",
 );
 updateModePresentation();
 if (selectedVariant) selectVariant(selectedVariant);
@@ -2123,6 +2449,22 @@ window.__routeForestArtLab = Object.freeze({
       seed: Number(windSeed.value),
       trail: windTrail.checked,
       vectors: windVectors.checked,
+    },
+    route: {
+      renderer: ROUTE_ART_VERSION,
+      preset: routePreset.value,
+      progress: Number(routeProgress.value) / 1000,
+      automatic: routeAutomatic,
+      lightCount: Number(routeCount.value),
+      speed: Number(routeSpeed.value),
+      lightSize: Number(routeSize.value),
+      brightness: Number(routeBrightness.value),
+      tailLength: Number(routeTail.value),
+      trailWidth: Number(routeTrailWidth.value),
+      trailPersistence: Number(routeTrailLife.value),
+      breakup: Number(routeBreakup.value),
+      curveWander: Number(routeWander.value),
+      treeReaction: Number(routeTree.value),
     },
     proofs: proofStates.map((proof) => ({
       id: proof.variant.id,
