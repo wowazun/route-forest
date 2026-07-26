@@ -143,15 +143,15 @@ function randomFrom(seed) {
 
 function chooseTreePosition(nodeId) {
   const random = randomFrom(hashText(nodeId));
-  const baseX = 0.28 + random() * 0.62;
-  const baseY = 0.27 + random() * 0.52;
+  const baseX = 0.06 + random() * 0.88;
+  const baseY = 0.14 + random() * 0.78;
   const existing = [...state.trees.values()];
 
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const angle = attempt * 2.39996 + random() * 0.45;
     const radius = attempt === 0 ? 0 : 0.018 * Math.sqrt(attempt);
-    const nx = Math.max(0.22, Math.min(0.94, baseX + Math.cos(angle) * radius));
-    const ny = Math.max(0.24, Math.min(0.82, baseY + Math.sin(angle) * radius));
+    const nx = Math.max(0.04, Math.min(0.96, baseX + Math.cos(angle) * radius));
+    const ny = Math.max(0.12, Math.min(0.94, baseY + Math.sin(angle) * radius));
     const clear = existing.every(
       (tree) => Math.hypot(tree.nx - nx, tree.ny - ny) > 0.052,
     );
@@ -1532,10 +1532,10 @@ function performanceTree(index, total) {
   const row = Math.floor(index / columns);
   const random = randomFrom(index * 811 + 73);
   const nx =
-    0.22 +
-    ((column + 0.2 + random() * 0.6) / Math.max(1, columns)) * 0.72;
+    0.04 +
+    ((column + 0.2 + random() * 0.6) / Math.max(1, columns)) * 0.92;
   const ny =
-    0.24 + ((row + 0.2 + random() * 0.6) / Math.max(1, rows)) * 0.58;
+    0.12 + ((row + 0.2 + random() * 0.6) / Math.max(1, rows)) * 0.82;
   const count = 1 + (index % 48);
   return {
     nodeId: `performance-node-${index}`,
@@ -1588,8 +1588,8 @@ function seedPerformanceScene() {
   for (let index = 0; index < performanceLoad.fogs; index += 1) {
     const random = randomFrom(index * 313 + 29);
     state.fogs.push({
-      x: state.width * (0.25 + random() * 0.64),
-      y: state.height * (0.28 + random() * 0.48),
+      x: state.width * (0.05 + random() * 0.9),
+      y: state.height * (0.15 + random() * 0.76),
       radius: 54 + random() * 48,
       bornAt: now - 12_000 - index * 400,
       life: 3_600_000,

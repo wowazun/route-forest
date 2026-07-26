@@ -67,7 +67,9 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /mote\.history\.length > 7/);
   assert.match(display, /context\.quadraticCurveTo\(/);
   assert.doesNotMatch(display, /mote\.x \* state\.width/);
-  assert.match(displayPage, /display\.js\?v=31/);
+  assert.match(displayPage, /display\.js\?v=32/);
+  assert.match(display, /const baseX = 0\.06 \+ random\(\) \* 0\.88/);
+  assert.match(display, /const baseY = 0\.14 \+ random\(\) \* 0\.78/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,
