@@ -211,6 +211,7 @@ export function drawBird(
     scale = 1,
     phase = 0,
     silhouette = "swallow",
+    palette: birdPalette,
   },
 ) {
   return drawBirdArt(context, {
@@ -225,6 +226,7 @@ export function drawBird(
     scale,
     phase,
     silhouette,
+    palette: birdPalette,
   });
 }
 

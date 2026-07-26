@@ -280,7 +280,7 @@ function drawSwallow(context, flap, palette) {
   const upperTipY = -24 - flap * 7;
   const lowerTipY = 15 + flap * 4.5;
 
-  context.fillStyle = "rgba(158, 116, 57, 0.27)";
+  context.fillStyle = rgba(palette.seed, 0.27);
   context.beginPath();
   context.moveTo(5, 1);
   context.bezierCurveTo(2, 5, -1, 10, -6, lowerTipY);

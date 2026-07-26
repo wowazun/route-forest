@@ -36,6 +36,8 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /source\.addEventListener\("controller-ended"/);
   assert.match(display, /Number\.POSITIVE_INFINITY/);
   assert.match(display, /paper: letter\.controller\.color/);
+  assert.match(display, /seed: flight\.controller\.color/);
+  assert.match(display, /palette: birdPalette/);
   assert.match(
     display,
     /state\.planes\.push\(\{\s*flightId: letter\.flightId,/,
@@ -53,7 +55,7 @@ test("connects the mobile controller and display through owned server events", a
     /plane\.heading = Math\.atan2\(integrated\.vy, integrated\.vx\)/,
   );
   assert.doesNotMatch(display, /plane\.heading = smoothPlaneHeading/);
-  assert.match(displayPage, /display\.js\?v=18/);
+  assert.match(displayPage, /display\.js\?v=19/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,

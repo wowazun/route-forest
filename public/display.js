@@ -761,6 +761,12 @@ function drawFlightRoute(flight, now) {
   );
   visual.lastAt = now;
   state.birdVisuals.set(flight.id, visual);
+  const birdPalette = flight.controller?.color
+    ? {
+        ...palette,
+        seed: flight.controller.color,
+      }
+    : palette;
 
   drawRoutePath(context, {
     segments: visibleRouteSegments(points),
@@ -770,6 +776,7 @@ function drawFlightRoute(flight, now) {
       angle: visual.angle,
       phase: (hashText(flight.id) % 628) / 100,
       glow: 0.34,
+      palette: birdPalette,
     },
     now,
   });
