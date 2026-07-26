@@ -38,8 +38,8 @@ import {
 import {
   drawRouteLightFlow,
   ROUTE_ART_VERSION,
-} from "./route-art.js";
-import { visualStyle } from "./visual-style.js";
+} from "./route-art.js?v=2";
+import { visualStyle } from "./visual-style.js?v=2";
 
 const proofs = document.querySelector("#proofs");
 const treeAge = document.querySelector("#tree-age");

@@ -36,7 +36,7 @@ export const visualStyle = deepFreeze({
     featherDriftMs: 4_200,
     letterFoldMs: 3_200,
     planeControlDelayMs: 520,
-    routeHighlightMs: 7_500,
+    routeHighlightMs: 5_000,
     fogBaseMs: 8_000,
     planeFlightMs: 11_000,
     routeMinimumMs: 5_200,

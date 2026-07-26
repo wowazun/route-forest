@@ -31,6 +31,10 @@ test("keeps the production bird at the slower exhibition speed", () => {
   assert.equal(visualStyle.motion.birdFlightSpeedPxPerSecond, 160);
 });
 
+test("keeps the route highlight brisk enough to read as moving light", () => {
+  assert.equal(visualStyle.motion.routeHighlightMs, 5_000);
+});
+
 test("covers every replaceable art asset with an anchor and state", () => {
   assert.deepEqual(Object.keys(assetContract.assets), [
     "bird",

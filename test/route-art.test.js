@@ -2,11 +2,18 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
+  DEFAULT_ROUTE_LIGHT_STYLE,
   createRouteLightModel,
   createRouteLightPath,
   drawRouteLightFlow,
   sampleRouteLightPath,
 } from "../public/route-art.js";
+
+test("keeps the production light swarm bright with a short visible afterimage", () => {
+  assert.equal(DEFAULT_ROUTE_LIGHT_STYLE.brightness, 0.86);
+  assert.equal(DEFAULT_ROUTE_LIGHT_STYLE.tailLength, 0.11);
+  assert.equal(DEFAULT_ROUTE_LIGHT_STYLE.trailPersistence, 0.64);
+});
 
 function treePoint(x, y, nodeId, size = 64) {
   return {

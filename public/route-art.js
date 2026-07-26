@@ -1,15 +1,15 @@
 const TAU = Math.PI * 2;
 
-export const ROUTE_ART_VERSION = "route-light-flow-v1";
+export const ROUTE_ART_VERSION = "route-light-flow-v2";
 
 export const DEFAULT_ROUTE_LIGHT_STYLE = Object.freeze({
   mode: "complete",
   lightCount: 4,
   lightSize: 1,
-  brightness: 0.72,
-  tailLength: 0.085,
-  trailWidth: 1,
-  trailPersistence: 0.58,
+  brightness: 0.86,
+  tailLength: 0.11,
+  trailWidth: 1.08,
+  trailPersistence: 0.64,
   trailBreakup: 0.42,
   curveWander: 1,
   treeReaction: 0.72,
@@ -362,7 +362,7 @@ function drawLightParticle(
 ) {
   const head = sampleRouteLightPath(path, progress, offset);
   const tailStart = Math.max(0, progress - tailLength);
-  const tailPieces = 4;
+  const tailPieces = 5;
   for (let index = 0; index < tailPieces; index += 1) {
     const pieceStart =
       tailStart + ((progress - tailStart) * index) / tailPieces;
@@ -377,7 +377,7 @@ function drawLightParticle(
     context.lineWidth = size * (0.42 + index * 0.13);
     context.strokeStyle = rgba(
       color,
-      alpha * (0.13 + (index / tailPieces) * 0.42),
+      alpha * (0.16 + (index / tailPieces) * 0.5),
     );
     context.stroke();
   }
@@ -386,6 +386,8 @@ function drawLightParticle(
   context.save();
   context.translate(head.x, head.y);
   context.rotate(head.angle + (random() - 0.5) * 0.16);
+  context.shadowColor = rgba(color, alpha * 0.82);
+  context.shadowBlur = 4 + size * 4.2;
   context.fillStyle = rgba(color, alpha);
   context.beginPath();
   context.ellipse(
@@ -675,7 +677,7 @@ export function drawRouteLightFlow(
         local <= 0.86 ? 1 : clamp(1 - (local - 0.86) / 0.34);
       strokePathRange(context, segment.path, trailStart, flow, {
         width: 1.55 * settings.trailWidth,
-        alpha: settings.brightness * 0.33 * trailFade,
+        alpha: settings.brightness * 0.39 * trailFade,
         color: settings.color,
         breakup: settings.trailBreakup,
         seed: segment.path.seed ^ 0x165667b1,

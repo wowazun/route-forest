@@ -20,7 +20,7 @@ import {
   drawRoutePath,
   drawTree,
   getTreeArtCacheKey,
-} from "./display-art.js?v=4";
+} from "./display-art.js?v=5";
 import {
   birdWorldAnchor,
   smoothBirdHeading,
@@ -43,7 +43,7 @@ import {
 } from "./feather-art.js?v=2";
 import { treeDisplaySizeForCount } from "./tree-art.js?v=2";
 import { createSimulation } from "./simulator-scenarios.js";
-import { visualStyle } from "./visual-style.js";
+import { visualStyle } from "./visual-style.js?v=2";
 
 const canvas = document.querySelector("#forest-canvas");
 const context = canvas.getContext("2d", { alpha: true });
