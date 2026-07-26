@@ -274,7 +274,7 @@ const CONTROLLER_PHASE_COPY = Object.freeze({
   carrying: Object.freeze({
     title: "鳥が通信の経路を進んでいます",
     description:
-      "観測された地点には木が生まれ、以前通った木は少しずつ育ちます。",
+      "あなたが選んだサイトまでの経路を、一羽の鳥がたどっています。\n観測された中継地点は木として残り、以前通った木は少しずつ育ちます。見えない区間は霧になります。",
   }),
   opening: Object.freeze({
     title: "届いた情報を開いています",

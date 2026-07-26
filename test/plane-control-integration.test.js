@@ -15,7 +15,7 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(page, /id="controller-pad"/);
   assert.match(page, /class="controller-pad-face"/);
   assert.match(page, /styles\.css\?v=6/);
-  assert.match(page, /app\.js\?v=6/);
+  assert.match(page, /app\.js\?v=7/);
   assert.match(page, /id="controller-color-swatch"/);
   assert.match(page, /id="route-highlight-button"/);
   assert.match(page, /id="ui-preview-state"/);
@@ -40,6 +40,10 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(app, /ensureControllerPadGeometry/);
   assert.match(app, /UI_PREVIEW_STATES/);
   assert.match(app, /applyUiPreview/);
+  assert.match(
+    app,
+    /あなたが選んだサイトまでの経路を、一羽の鳥がたどっています。\\n観測された中継地点は木として残り/,
+  );
   assert.match(app, /setInterval\(\(\) => \{\s*sendControllerInput/);
   assert.match(app, /"touchstart"/);
   assert.match(app, /"touchmove"/);
