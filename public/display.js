@@ -663,33 +663,127 @@ function updateWindMotes(now, deltaSeconds) {
   if (state.width <= 0 || state.height <= 0) return;
   const motionScale = prefersReducedMotion ? 0.22 : 1;
   const time = now / 1_000;
+  const windTrees = [...state.trees.values()]
+    .filter((tree) => tree.size >= 5)
+    .map((tree) => ({
+      id: tree.nodeId,
+      size: tree.size,
+      ...treePoint(tree),
+    }));
+  const visibleMoteCount = Math.min(
+    state.motes.length,
+    windTrees.length * 42,
+  );
 
-  for (const mote of state.motes) {
-    const x = mote.x * state.width;
-    const y = mote.y * state.height;
+  function respawnMote(mote) {
+    if (windTrees.length === 0) {
+      mote.active = false;
+      mote.history.length = 0;
+      return;
+    }
+
+    mote.respawnCount += 1;
+    const tree =
+      windTrees[(mote.index + mote.respawnCount * 17) % windTrees.length];
+    const random = randomFrom(
+      hashText(`${tree.id}:${mote.index}:${mote.respawnCount}`),
+    );
+    const minimumRadius = 24 + tree.size * 0.72;
+    const maximumRadius = 54 + tree.size * 1.86;
+    let x = tree.x;
+    let y = tree.y;
+    let placed = false;
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const angle = random() * Math.PI * 2;
+      const radius =
+        minimumRadius + random() * (maximumRadius - minimumRadius);
+      x = tree.x + Math.cos(angle) * radius;
+      y = tree.y + Math.sin(angle) * radius * (0.68 + random() * 0.22);
+      if (
+        x >= 10 &&
+        x <= state.width - 10 &&
+        y >= 10 &&
+        y <= state.height - 10
+      ) {
+        placed = true;
+        break;
+      }
+    }
+
+    if (!placed) {
+      const inwardAngle = Math.atan2(
+        state.height * 0.5 - tree.y,
+        state.width * 0.5 - tree.x,
+      );
+      x = tree.x + Math.cos(inwardAngle) * minimumRadius;
+      y = tree.y + Math.sin(inwardAngle) * minimumRadius;
+    }
+
+    mote.x = x;
+    mote.y = y;
+    mote.vx = 0;
+    mote.vy = 0;
+    mote.bornAt = now;
+    mote.life = 5_200 + random() * 4_800;
+    mote.opacity = 0;
+    mote.active = true;
+    mote.treeId = tree.id;
+    mote.lastTrailAt = now;
+    mote.history.length = 0;
+    mote.history.push({ x, y });
+  }
+
+  for (let index = 0; index < state.motes.length; index += 1) {
+    const mote = state.motes[index];
+    if (index >= visibleMoteCount) {
+      mote.active = false;
+      mote.opacity = 0;
+      mote.history.length = 0;
+      continue;
+    }
+    if (!mote.active) respawnMote(mote);
+    if (!mote.active) continue;
+
+    const age = now - mote.bornAt;
+    const outside =
+      mote.x < -12 ||
+      mote.x > state.width + 12 ||
+      mote.y < -12 ||
+      mote.y > state.height + 12;
+    if (outside || age >= mote.life) {
+      respawnMote(mote);
+      continue;
+    }
+
     const wind = windField.sample(
-      x,
-      y,
+      mote.x,
+      mote.y,
       time,
       state.windIndex,
     );
+    const windMagnitude = Math.hypot(wind.x, wind.y);
+    if (windMagnitude < 0.008) {
+      respawnMote(mote);
+      continue;
+    }
     const targetVx = wind.x * mote.speed;
     const targetVy = wind.y * mote.speed;
-    const response = 1 - Math.exp(-3.2 * deltaSeconds);
+    const response = 1 - Math.exp(-4.8 * deltaSeconds);
     mote.vx += (targetVx - mote.vx) * response;
     mote.vy += (targetVy - mote.vy) * response;
-    mote.x =
-      ((mote.x +
-        (mote.vx * deltaSeconds * motionScale) / state.width) %
-        1 +
-        1) %
-      1;
-    mote.y =
-      ((mote.y +
-        (mote.vy * deltaSeconds * motionScale) / state.height) %
-        1 +
-        1) %
-      1;
+    mote.x += mote.vx * deltaSeconds * motionScale;
+    mote.y += mote.vy * deltaSeconds * motionScale;
+    const fadeIn = Math.min(1, age / 420);
+    const fadeOut = Math.min(1, (mote.life - age) / 900);
+    const motionVisibility = Math.min(1, windMagnitude / 0.055);
+    mote.opacity = Math.max(0, fadeIn * fadeOut * motionVisibility);
+
+    if (now - mote.lastTrailAt >= 42) {
+      mote.history.push({ x: mote.x, y: mote.y });
+      if (mote.history.length > 7) mote.history.shift();
+      mote.lastTrailAt = now;
+    }
   }
 }
 
@@ -786,22 +880,39 @@ function drawBackground(now) {
   }
 
   for (const mote of state.motes) {
-    const x = mote.x * state.width;
-    const y = mote.y * state.height;
+    if (!mote.active || mote.opacity <= 0.01) continue;
+    const x = mote.x;
+    const y = mote.y;
     const speed = Math.hypot(mote.vx, mote.vy);
     const directionX = speed > 0.01 ? mote.vx / speed : 1;
     const directionY = speed > 0.01 ? mote.vy / speed : 0;
     const shimmer =
       0.72 + Math.sin(now * 0.0017 + mote.phase * 2.3) * 0.28;
-    const alpha = mote.alpha * shimmer;
+    const alpha = mote.alpha * shimmer * mote.opacity;
     const trail = mote.trail * Math.min(1, speed / 24);
 
     context.beginPath();
-    context.moveTo(
-      x - directionX * trail,
-      y - directionY * trail,
-    );
-    context.lineTo(x, y);
+    if (mote.history.length >= 3) {
+      const first = mote.history[0];
+      context.moveTo(first.x, first.y);
+      for (let index = 1; index < mote.history.length - 1; index += 1) {
+        const point = mote.history[index];
+        const next = mote.history[index + 1];
+        context.quadraticCurveTo(
+          point.x,
+          point.y,
+          (point.x + next.x) * 0.5,
+          (point.y + next.y) * 0.5,
+        );
+      }
+      context.lineTo(x, y);
+    } else {
+      context.moveTo(
+        x - directionX * trail,
+        y - directionY * trail,
+      );
+      context.lineTo(x, y);
+    }
     context.lineCap = "round";
     context.lineWidth = mote.size * 0.72;
     context.strokeStyle = `rgba(184, 222, 213, ${alpha * 0.52})`;
@@ -1158,30 +1269,35 @@ function resize() {
   if (state.motes.length === 0) {
     const random = randomFrom(411);
     const moteCount = visualStyle.density.ambientWindMotes;
-    const aspectRatio = Math.max(0.5, state.width / Math.max(1, state.height));
-    const columns = Math.ceil(Math.sqrt(moteCount * aspectRatio));
-    const rows = Math.ceil(moteCount / columns);
     state.motes = Array.from(
       { length: moteCount },
-      (_, index) => {
-        const slot = (index * 71) % (columns * rows);
-        return {
-          x:
-            ((slot % columns) + 0.18 + random() * 0.64) /
-            columns,
-          y:
-            (Math.floor(slot / columns) + 0.18 + random() * 0.64) /
-            rows,
-          vx: 0,
-          vy: 0,
-          speed: 28 + random() * 44,
-          size: (0.65 + random() * 1.35) * 1.5,
-          trail: 5 + random() * 11,
-          alpha: 0.09 + random() * 0.17,
-          phase: random() * Math.PI * 2,
-        };
-      },
+      (_, index) => ({
+        index,
+        x: 0,
+        y: 0,
+        vx: 0,
+        vy: 0,
+        speed: 92 + random() * 68,
+        size: (0.65 + random() * 1.35) * 1.5,
+        trail: 5 + random() * 11,
+        alpha: 0.09 + random() * 0.17,
+        phase: random() * Math.PI * 2,
+        active: false,
+        bornAt: 0,
+        life: 0,
+        opacity: 0,
+        respawnCount: 0,
+        treeId: null,
+        lastTrailAt: 0,
+        history: [],
+      }),
     );
+  } else {
+    for (const mote of state.motes) {
+      mote.active = false;
+      mote.opacity = 0;
+      mote.history.length = 0;
+    }
   }
 }
 
