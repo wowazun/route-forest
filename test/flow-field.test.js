@@ -6,6 +6,7 @@ import {
   createTreeWindIndex,
   createWindField,
   integratePlane,
+  planeRecoveryForce,
   smoothPlaneHeading,
 } from "../public/flow-field.js";
 import { visualStyle } from "../public/visual-style.js";
@@ -80,6 +81,73 @@ test("limits tree lookup and keeps heading stable near zero speed", () => {
     smoothPlaneHeading(0, { x: 0, y: 20 }, 0.1),
     0,
   );
+});
+
+test("finds the nearest wind tree even outside the local wind cells", () => {
+  const index = createTreeWindIndex({
+    trees: [
+      { x: 80, y: 90, size: 30, seed: "left" },
+      { x: 900, y: 500, size: 40, seed: "right" },
+    ],
+  });
+
+  assert.equal(index.nearest(1_200, 520).seed, "right");
+  assert.equal(index.nearest(-300, 40).seed, "left");
+});
+
+test("guides a calm stopped plane back toward the nearest tree", () => {
+  const treeIndex = createTreeWindIndex({
+    trees: [{ x: 300, y: 200, size: 44, seed: "tree" }],
+  });
+  const recovery = planeRecoveryForce({
+    plane: { x: 700, y: 200, vx: 0, vy: 0 },
+    wind: { x: 0, y: 0 },
+    control: { x: 0, y: 0 },
+    treeIndex,
+    width: 800,
+    height: 450,
+  });
+
+  assert.ok(recovery.x < 0);
+  assert.ok(Math.abs(recovery.y) < 0.0001);
+});
+
+test("keeps a paper plane gliding when no tree flow exists yet", () => {
+  const recovery = planeRecoveryForce({
+    plane: { x: 400, y: 225, vx: 0, vy: 0, heading: Math.PI / 2 },
+    wind: { x: 0, y: 0 },
+    control: { x: 0, y: 0 },
+    treeIndex: createTreeWindIndex(),
+    width: 800,
+    height: 450,
+  });
+
+  assert.ok(Math.abs(recovery.x) < 0.0001);
+  assert.ok(recovery.y > 0);
+});
+
+test("strengthens inward recovery near an edge without creating ambient wind", () => {
+  const treeIndex = createTreeWindIndex({
+    trees: [{ x: 400, y: 225, size: 44, seed: "tree" }],
+  });
+  const centerRecovery = planeRecoveryForce({
+    plane: { x: 600, y: 225 },
+    wind: { x: 0, y: 0 },
+    control: { x: 0, y: 0 },
+    treeIndex,
+    width: 800,
+    height: 450,
+  });
+  const edgeRecovery = planeRecoveryForce({
+    plane: { x: 790, y: 225 },
+    wind: { x: 0, y: 0 },
+    control: { x: 0, y: 0 },
+    treeIndex,
+    width: 800,
+    height: 450,
+  });
+
+  assert.ok(edgeRecovery.x < centerRecovery.x);
 });
 
 test("keeps production paper-plane heading highly responsive", () => {

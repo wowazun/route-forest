@@ -130,6 +130,22 @@ export function createTreeWindIndex({
 
   return Object.freeze({
     size: normalizedTrees.length,
+    nearest(x, y) {
+      const px = Number(x) || 0;
+      const py = Number(y) || 0;
+      let nearestTree = null;
+      let nearestDistanceSquared = Number.POSITIVE_INFINITY;
+      for (const tree of normalizedTrees) {
+        const dx = tree.x - px;
+        const dy = tree.y - py;
+        const distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared < nearestDistanceSquared) {
+          nearestTree = tree;
+          nearestDistanceSquared = distanceSquared;
+        }
+      }
+      return nearestTree;
+    },
     query(x, y, radius = safeCellSize) {
       const cellX = Math.floor((Number(x) || 0) / safeCellSize);
       const cellY = Math.floor((Number(y) || 0) / safeCellSize);
@@ -239,6 +255,102 @@ export function combinePlaneForces({
     controlForce,
     totalForce,
   });
+}
+
+export function planeRecoveryForce({
+  plane,
+  wind,
+  control,
+  treeIndex,
+  width,
+  height,
+  calmThreshold = 0.035,
+  minimumGlideSpeed = 24,
+  glideStrength = 36,
+  flowReturnStrength = 42,
+  edgeReturnStrength = 150,
+  edgeInset = 110,
+}) {
+  const x = Number(plane?.x) || 0;
+  const y = Number(plane?.y) || 0;
+  const safeWidth = Math.max(1, Number(width) || 1);
+  const safeHeight = Math.max(1, Number(height) || 1);
+  const nearestTree =
+    treeIndex && typeof treeIndex.nearest === "function"
+      ? treeIndex.nearest(x, y)
+      : null;
+  const target = nearestTree || {
+    x: safeWidth * 0.5,
+    y: safeHeight * 0.5,
+  };
+  const targetX = target.x - x;
+  const targetY = target.y - y;
+  const targetDistance = Math.hypot(targetX, targetY);
+  const threshold = clamp(Number(calmThreshold) || 0.035, 0.005, 0.2);
+  const windMagnitude = Math.hypot(
+    Number(wind?.x) || 0,
+    Number(wind?.y) || 0,
+  );
+  const controlMagnitude = Math.min(
+    1,
+    Math.hypot(Number(control?.x) || 0, Number(control?.y) || 0),
+  );
+  const vx = Number(plane?.vx) || 0;
+  const vy = Number(plane?.vy) || 0;
+  const speed = Math.hypot(vx, vy);
+  const safeMinimumGlideSpeed = clamp(
+    Number(minimumGlideSpeed) || 0,
+    0,
+    80,
+  );
+  const heading =
+    speed >= 0.5
+      ? Math.atan2(vy, vx)
+      : Number.isFinite(plane?.heading)
+        ? plane.heading
+        : 0;
+  const glideBlend =
+    speed < safeMinimumGlideSpeed ? 1 - controlMagnitude : 0;
+  let forceX =
+    Math.cos(heading) *
+    clamp(Number(glideStrength) || 0, 0, 100) *
+    glideBlend;
+  let forceY =
+    Math.sin(heading) *
+    clamp(Number(glideStrength) || 0, 0, 100) *
+    glideBlend;
+  if (targetDistance < 0.001) {
+    return Object.freeze({ x: forceX, y: forceY });
+  }
+
+  const directionX = targetX / targetDistance;
+  const directionY = targetY / targetDistance;
+  const calmBlend =
+    (1 - smoothstep(clamp(windMagnitude / threshold, 0, 1))) *
+    (1 - controlMagnitude);
+  forceX +=
+    directionX * clamp(Number(flowReturnStrength) || 0, 0, 120) * calmBlend;
+  forceY +=
+    directionY * clamp(Number(flowReturnStrength) || 0, 0, 120) * calmBlend;
+
+  const maximumInset = Math.min(safeWidth, safeHeight) * 0.28;
+  const inset = clamp(Number(edgeInset) || 110, 24, maximumInset);
+  const edgeDepth = Math.max(
+    x < inset ? (inset - x) / inset : 0,
+    x > safeWidth - inset ? (x - (safeWidth - inset)) / inset : 0,
+    y < inset ? (inset - y) / inset : 0,
+    y > safeHeight - inset ? (y - (safeHeight - inset)) / inset : 0,
+  );
+  const edgeBlend = smoothstep(clamp(edgeDepth, 0, 1));
+  const safeEdgeStrength = clamp(
+    Number(edgeReturnStrength) || 0,
+    0,
+    240,
+  );
+  forceX += directionX * safeEdgeStrength * edgeBlend;
+  forceY += directionY * safeEdgeStrength * edgeBlend;
+
+  return Object.freeze({ x: forceX, y: forceY });
 }
 
 export function integratePlane(

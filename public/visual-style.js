@@ -51,6 +51,12 @@ export const visualStyle = deepFreeze({
       maxSpeed: 230,
       headingResponse: 36,
       inputTimeoutMs: 360,
+      calmThreshold: 0.035,
+      minimumGlideSpeed: 24,
+      glideStrength: 36,
+      flowReturnStrength: 42,
+      edgeReturnStrength: 150,
+      edgeInset: 110,
     },
     wind: {
       seed: 411,

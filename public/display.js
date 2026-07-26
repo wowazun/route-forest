@@ -34,6 +34,7 @@ import {
   createTreeWindIndex,
   createWindField,
   integratePlane,
+  planeRecoveryForce,
 } from "./flow-field.js";
 import {
   DEFAULT_FEATHER_ART,
@@ -1043,9 +1044,26 @@ function updateScene(now, deltaSeconds) {
         windStrength: planePhysics.windStrength * controlBlend,
         controlStrength: planePhysics.controlStrength * controlBlend,
       });
+      const recoveryForce = planeRecoveryForce({
+        plane,
+        wind: plane.wind,
+        control,
+        treeIndex: state.windIndex,
+        width: state.width,
+        height: state.height,
+        calmThreshold: planePhysics.calmThreshold,
+        minimumGlideSpeed: planePhysics.minimumGlideSpeed,
+        glideStrength: planePhysics.glideStrength * controlBlend,
+        flowReturnStrength: planePhysics.flowReturnStrength * controlBlend,
+        edgeReturnStrength: planePhysics.edgeReturnStrength * controlBlend,
+        edgeInset: planePhysics.edgeInset,
+      });
       const integrated = integratePlane(
         plane,
-        forces.totalForce,
+        {
+          x: forces.totalForce.x + recoveryForce.x,
+          y: forces.totalForce.y + recoveryForce.y,
+        },
         deltaSeconds,
         {
           drag: planePhysics.drag,
