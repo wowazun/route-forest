@@ -1,9 +1,4 @@
 import http from "node:http";
-import {
-  randomBytes,
-  randomUUID,
-  timingSafeEqual,
-} from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
@@ -99,10 +94,6 @@ const ALLOWED_MEASUREMENT_FIELDS = new Set([
   "consentVersion",
   "website",
 ]);
-const ADMIN_CHALLENGE_TTL_MS = 60_000;
-const ADMIN_CHALLENGE_INTERVAL_MS = 2_000;
-const ADMIN_CONFIRMATION_PREFIX = "渡り路をまっさらにする";
-
 class AdminResetError extends Error {
   constructor(code, message, statusCode = 400) {
     super(message);
@@ -225,39 +216,8 @@ function bearerToken(request) {
   return match[1];
 }
 
-function assertAdminAuthorization(request, configuredToken) {
-  if (!configuredToken) {
-    throw new AdminResetError(
-      "admin_reset_disabled",
-      "Administrative reset is not configured",
-      503,
-    );
-  }
-  const authorization = request.headers.authorization || "";
-  const match = /^Bearer ([A-Za-z0-9_-]{32,128})$/.exec(authorization);
-  if (!match) {
-    throw new AdminResetError(
-      "admin_unauthorized",
-      "Administrative authorization is required",
-      401,
-    );
-  }
-  const supplied = Buffer.from(match[1], "utf8");
-  const expected = Buffer.from(configuredToken, "utf8");
-  if (
-    supplied.length !== expected.length ||
-    !timingSafeEqual(supplied, expected)
-  ) {
-    throw new AdminResetError(
-      "admin_unauthorized",
-      "Administrative authorization is invalid",
-      401,
-    );
-  }
-}
-
 function assertAdminResetBody(body) {
-  const allowed = new Set(["challengeId", "confirmation"]);
+  const allowed = new Set(["confirmed"]);
   for (const field of Object.keys(body)) {
     if (!allowed.has(field)) {
       throw new AdminResetError(
@@ -266,12 +226,7 @@ function assertAdminResetBody(body) {
       );
     }
   }
-  if (
-    typeof body.challengeId !== "string" ||
-    !/^[0-9a-f-]{36}$/.test(body.challengeId) ||
-    typeof body.confirmation !== "string" ||
-    body.confirmation.length > 128
-  ) {
+  if (body.confirmed !== true) {
     throw new AdminResetError(
       "invalid_reset_confirmation",
       "The reset confirmation is invalid",
@@ -341,14 +296,6 @@ export function createHttpServer({
   publicDirectory = DEFAULT_PUBLIC_DIRECTORY,
 }) {
   const displayClients = new Set();
-  const adminChallenges = new Map();
-  let lastAdminChallengeAt = 0;
-
-  function pruneAdminChallenges(now = Date.now()) {
-    for (const [challengeId, challenge] of adminChallenges) {
-      if (challenge.expiresAt <= now) adminChallenges.delete(challengeId);
-    }
-  }
 
   return http.createServer(async (request, response) => {
     try {
@@ -369,78 +316,13 @@ export function createHttpServer({
 
       if (
         request.method === "POST" &&
-        url.pathname === "/api/admin/reset/challenge"
-      ) {
-        assertAllowedOrigin(request, config.publicOrigin);
-        assertAdminAuthorization(request, config.adminResetToken);
-        const body = await readJson(request);
-        if (Object.keys(body).length > 0) {
-          throw new AdminResetError(
-            "unexpected_admin_field",
-            "The challenge request must be empty",
-          );
-        }
-        const now = Date.now();
-        pruneAdminChallenges(now);
-        if (now - lastAdminChallengeAt < ADMIN_CHALLENGE_INTERVAL_MS) {
-          throw new AdminResetError(
-            "admin_challenge_rate_limited",
-            "Wait before requesting another reset challenge",
-            429,
-          );
-        }
-        lastAdminChallengeAt = now;
-        adminChallenges.clear();
-        const challengeId = randomUUID();
-        const confirmation = `${ADMIN_CONFIRMATION_PREFIX} ${randomBytes(3)
-          .toString("hex")
-          .toUpperCase()}`;
-        const expiresAt = now + ADMIN_CHALLENGE_TTL_MS;
-        adminChallenges.set(challengeId, {
-          confirmation,
-          expiresAt,
-        });
-        sendJson(response, 200, {
-          challengeId,
-          confirmation,
-          expiresAt: new Date(expiresAt).toISOString(),
-          summary: {
-            measurements: measurementService.getResetSummary(),
-            controllers: controllerService.getResetSummary(),
-          },
-        });
-        return;
-      }
-
-      if (
-        request.method === "POST" &&
         url.pathname === "/api/admin/reset"
       ) {
         assertAllowedOrigin(request, config.publicOrigin);
-        assertAdminAuthorization(request, config.adminResetToken);
         const body = await readJson(request);
         assertAdminResetBody(body);
-        const now = Date.now();
-        pruneAdminChallenges(now);
-        const challenge = adminChallenges.get(body.challengeId);
-        adminChallenges.delete(body.challengeId);
-        if (!challenge || challenge.expiresAt <= now) {
-          throw new AdminResetError(
-            "reset_challenge_expired",
-            "The reset challenge has expired",
-            409,
-          );
-        }
-        if (body.confirmation !== challenge.confirmation) {
-          throw new AdminResetError(
-            "reset_confirmation_mismatch",
-            "The reset confirmation does not match",
-            409,
-          );
-        }
         const controllers = controllerService.resetAll();
         const measurements = measurementService.reset();
-        adminChallenges.clear();
         sendJson(response, 200, {
           reset: true,
           resetId: measurements.resetId,

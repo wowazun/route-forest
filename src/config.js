@@ -50,21 +50,12 @@ export function loadConfig() {
   if (publicOrigin.protocol !== "https:") {
     throw new Error("PUBLIC_ORIGIN must use https");
   }
-  const adminResetToken = process.env.ADMIN_RESET_TOKEN?.trim() || null;
-  if (
-    adminResetToken !== null &&
-    Buffer.byteLength(adminResetToken, "utf8") < 32
-  ) {
-    throw new Error("ADMIN_RESET_TOKEN must contain at least 32 bytes");
-  }
-
   return Object.freeze({
     host: process.env.HOST?.trim() || "127.0.0.1",
     port: integer("PORT", 8080, { min: 1, max: 65535 }),
     publicOrigin: publicOrigin.origin,
     consentVersion: process.env.CONSENT_VERSION?.trim() || "route-observation-v2",
     hmacSecret,
-    adminResetToken,
     traceroute: Object.freeze({
       binary: process.env.TRACEROUTE_BIN?.trim() || "traceroute",
       method: choice("TRACEROUTE_METHOD", "icmp", ["icmp", "udp"]),
