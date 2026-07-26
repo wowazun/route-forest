@@ -9,6 +9,7 @@ import {
   shouldReleaseFeather,
   shouldRevealFog,
   treeFieldSpread,
+  travelRouteSegments,
   visibleRouteSegments,
 } from "../public/exhibition-effects.js";
 
@@ -59,6 +60,26 @@ test("does not falsely illuminate unobserved fog intervals", () => {
   );
 });
 
+test("keeps the bird travel path dotted through unobserved fog intervals", () => {
+  const points = [
+    { source: { kind: "tree" }, x: 0, y: 0 },
+    { source: { kind: "tree" }, x: 1, y: 1 },
+    { source: { kind: "fog" }, x: 2, y: 1 },
+    { source: { kind: "tree" }, x: 3, y: 0 },
+    { source: { kind: "tree" }, x: 4, y: 0 },
+  ];
+  const segments = travelRouteSegments(points);
+
+  assert.deepEqual(
+    segments.map((segment) => segment.index),
+    [0, 1, 2, 3],
+  );
+  assert.deepEqual(
+    segments.filter((segment) => segment.unobserved).map((segment) => segment.index),
+    [1, 2],
+  );
+});
+
 test("extends a route highlight to the moving owned paper plane", () => {
   const points = [
     { source: { kind: "tree" }, x: 10, y: 20 },
@@ -78,12 +99,15 @@ test("extends a route highlight to the moving owned paper plane", () => {
   assert.equal(moved.at(-1).to.y, 95);
 });
 
-test("does not connect a highlight from an unobserved fog endpoint", () => {
+test("highlights a fog endpoint with dots but does not extend it to the plane", () => {
   const points = [
     { source: { kind: "tree" }, x: 10, y: 20 },
     { source: { kind: "fog" }, x: 50, y: 40 },
   ];
-  assert.deepEqual(routeHighlightSegments(points, { x: 90, y: 70 }), []);
+  const segments = routeHighlightSegments(points, { x: 90, y: 70 });
+  assert.equal(segments.length, 1);
+  assert.equal(segments[0].unobserved, true);
+  assert.equal(segments[0].to, points.at(-1));
 });
 
 test("reveals fog before the bird reaches its unknown waypoint", () => {

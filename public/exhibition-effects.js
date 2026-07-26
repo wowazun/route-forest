@@ -166,8 +166,26 @@ export function visibleRouteSegments(points) {
   return Object.freeze(segments);
 }
 
+export function travelRouteSegments(points) {
+  const segments = [];
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const from = points[index];
+    const to = points[index + 1];
+    segments.push(
+      Object.freeze({
+        from,
+        to,
+        index,
+        unobserved:
+          from?.source?.kind === "fog" || to?.source?.kind === "fog",
+      }),
+    );
+  }
+  return Object.freeze(segments);
+}
+
 export function routeHighlightSegments(points, plane = null) {
-  const segments = [...visibleRouteSegments(points)];
+  const segments = [...travelRouteSegments(points)];
   const endpoint = points.at(-1);
   if (
     !endpoint ||
@@ -186,6 +204,7 @@ export function routeHighlightSegments(points, plane = null) {
         source: Object.freeze({ kind: "plane" }),
       }),
       index: Math.max(0, points.length - 1),
+      unobserved: false,
     }),
   );
   return Object.freeze(segments);

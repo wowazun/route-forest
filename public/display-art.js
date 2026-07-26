@@ -184,16 +184,35 @@ export function drawRouteHighlight(
 ) {
   const alpha = Math.pow(1 - progress, 1.7);
   const pulse = 1 + Math.sin(progress * Math.PI * 8) * 0.15;
+  const observedSegments = segments.filter((segment) => !segment.unobserved);
+  const unobservedSegments = segments.filter((segment) => segment.unobserved);
 
   context.save();
   context.lineCap = "round";
   context.lineJoin = "round";
-  context.lineWidth = 2.2 * pulse;
   context.shadowColor = palette.route;
-  context.shadowBlur = 20 * alpha;
-  context.strokeStyle = `rgba(184, 222, 213, ${alpha * 0.72})`;
 
-  strokeSmoothRoute(context, { segments, routeId });
+  if (unobservedSegments.length > 0) {
+    context.setLineDash([3, 7]);
+    context.lineWidth = 1.8 * pulse;
+    context.shadowBlur = 13 * alpha;
+    context.strokeStyle = `rgba(184, 222, 213, ${alpha * 0.56})`;
+    strokeSmoothRoute(context, {
+      segments: unobservedSegments,
+      routeId,
+    });
+  }
+
+  if (observedSegments.length > 0) {
+    context.setLineDash([]);
+    context.lineWidth = 2.2 * pulse;
+    context.shadowBlur = 20 * alpha;
+    context.strokeStyle = `rgba(184, 222, 213, ${alpha * 0.72})`;
+    strokeSmoothRoute(context, {
+      segments: observedSegments,
+      routeId,
+    });
+  }
   context.restore();
 }
 
@@ -273,16 +292,27 @@ export function drawRoutePath(
   context,
   { segments, routeId, bird, now },
 ) {
+  const hasUnobserved = segments.some((segment) => segment.unobserved);
+  const observedSegments = hasUnobserved
+    ? segments.filter((segment) => !segment.unobserved)
+    : segments;
+
   context.save();
   context.lineWidth = 1.6;
   context.lineCap = "round";
   context.lineJoin = "round";
   context.setLineDash([2, 8]);
   context.shadowColor = palette.route;
-  context.shadowBlur = 12;
 
+  if (hasUnobserved) {
+    context.shadowBlur = 7;
+    context.strokeStyle = "rgba(184, 222, 213, 0.48)";
+    strokeSmoothRoute(context, { segments, routeId });
+  }
+
+  context.shadowBlur = 12;
   context.strokeStyle = "rgba(184, 222, 213, 0.75)";
-  strokeSmoothRoute(context, { segments, routeId });
+  strokeSmoothRoute(context, { segments: observedSegments, routeId });
 
   drawBird(context, { ...bird, now });
   context.restore();

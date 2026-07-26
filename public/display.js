@@ -7,8 +7,9 @@ import {
   shouldReleaseFeather,
   shouldRevealFog,
   treeFieldSpread,
+  travelRouteSegments,
   visibleRouteSegments,
-} from "./exhibition-effects.js?v=3";
+} from "./exhibition-effects.js?v=4";
 import {
   createFogTexture,
   drawFog,
@@ -19,7 +20,7 @@ import {
   drawRoutePath,
   drawTree,
   getTreeArtCacheKey,
-} from "./display-art.js";
+} from "./display-art.js?v=2";
 import {
   birdWorldAnchor,
   smoothBirdHeading,
@@ -1130,7 +1131,7 @@ function drawFlightRoute(flight, now) {
     : palette;
 
   drawRoutePath(context, {
-    segments: visibleRouteSegments(points),
+    segments: travelRouteSegments(points),
     routeId: flight.id,
     bird: {
       ...bird,

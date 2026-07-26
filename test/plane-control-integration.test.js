@@ -67,12 +67,13 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /mote\.history\.length > 7/);
   assert.match(display, /context\.quadraticCurveTo\(/);
   assert.doesNotMatch(display, /mote\.x \* state\.width/);
-  assert.match(displayPage, /display\.js\?v=34/);
+  assert.match(displayPage, /display\.js\?v=35/);
   assert.match(display, /treeFieldSpread\(existing\.length\)/);
   assert.match(display, /if \(clearance >= 1\) return \{ nx, ny \}/);
   assert.match(display, /context\.scale\(calibration\.artScale/);
   assert.match(display, /--qr-scale/);
   assert.match(display, /route-forest-display-calibration-v1/);
+  assert.match(display, /segments: travelRouteSegments\(points\)/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,

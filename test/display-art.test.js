@@ -114,6 +114,63 @@ test("preserves the dashed route, bird, and highlight drawing commands", () => {
   assert.equal(operationCount(highlightContext, "stroke"), 1);
 });
 
+test("draws a subdued continuous dotted path beneath fog", () => {
+  const context = createRecordingContext();
+  drawRoutePath(context, {
+    segments: [
+      {
+        from: { x: 10, y: 20 },
+        to: { x: 80, y: 50 },
+        index: 0,
+        unobserved: false,
+      },
+      {
+        from: { x: 80, y: 50 },
+        to: { x: 140, y: 46 },
+        index: 1,
+        unobserved: true,
+      },
+    ],
+    routeId: "route-with-fog",
+    bird: { x: 92, y: 48, angle: 0.1 },
+    now: 1_500,
+  });
+
+  const strokeStyles = context.operations
+    .filter(([operation, property]) => operation === "set" && property === "strokeStyle")
+    .map(([, , value]) => value);
+  assert.ok(strokeStyles.includes("rgba(184, 222, 213, 0.48)"));
+  assert.ok(strokeStyles.includes("rgba(184, 222, 213, 0.75)"));
+});
+
+test("keeps highlighted fog intervals dotted and softly illuminated", () => {
+  const context = createRecordingContext();
+  drawRouteHighlight(context, {
+    segments: [
+      {
+        from: { x: 10, y: 20 },
+        to: { x: 80, y: 50 },
+        index: 0,
+        unobserved: false,
+      },
+      {
+        from: { x: 80, y: 50 },
+        to: { x: 140, y: 46 },
+        index: 1,
+        unobserved: true,
+      },
+    ],
+    routeId: "highlight-with-fog",
+    progress: 0.25,
+  });
+
+  const dashPatterns = context.operations
+    .filter(([operation]) => operation === "setLineDash")
+    .map(([, value]) => value);
+  assert.deepEqual(dashPatterns, [[3, 7], []]);
+  assert.equal(operationCount(context, "stroke"), 2);
+});
+
 test("keeps tree anchors exact while sharing a smooth tangent at joins", () => {
   const first = { x: 20, y: 90 };
   const middle = { x: 110, y: 42 };
