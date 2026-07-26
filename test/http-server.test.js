@@ -251,7 +251,7 @@ test("serves the participation page and assets with a restrictive CSP", async ()
     assert.equal(page.status, 200);
     assert.match(page.headers.get("content-type"), /^text\/html/);
     assert.match(page.headers.get("content-security-policy"), /default-src 'self'/);
-    assert.match(html, /<title>情報の森<\/title>/);
+    assert.match(html, /<title>渡り路<\/title>/);
     assert.match(html, /鳥を送る/);
     assert.match(html, /作品について/);
     assert.doesNotMatch(html, /ROUTE OBSERVATION|TECHNICAL STUDY/);
@@ -272,7 +272,7 @@ test("serves the exhibition display and starts an anonymized event stream", asyn
     const page = await fetch(`${baseUrl}/display`);
     const html = await page.text();
     assert.equal(page.status, 200);
-    assert.match(html, /情報通信路/);
+    assert.match(html, /渡り路/);
     assert.match(html, /qr\.svg/);
     assert.match(html, /育った木/);
     assert.match(html, /届いた経路/);
