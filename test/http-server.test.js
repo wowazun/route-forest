@@ -271,6 +271,12 @@ test("serves the exhibition display and starts an anonymized event stream", asyn
     assert.equal(page.status, 200);
     assert.match(html, /情報通信路/);
     assert.match(html, /qr\.svg/);
+    assert.match(html, /育った木/);
+    assert.match(html, /届いた経路/);
+    assert.match(html, /スマートフォンで読み取ってください/);
+    assert.doesNotMatch(html, /YOUR ROUTE/);
+    assert.doesNotMatch(html, /class="ticket-copy"/);
+    assert.doesNotMatch(html, /class="field-key"/);
     assert.match(html, /id="performance-monitor"/);
 
     const stylesheet = await fetch(`${baseUrl}/display.css`);

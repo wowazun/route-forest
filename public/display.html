@@ -9,7 +9,7 @@
       content="来場者の情報通信路を鳥と木と霧で描く、情報通信路の大型展示画面。"
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/display.css" />
+    <link rel="stylesheet" href="/display.css?v=2" />
     <title>情報通信路 — Exhibition Display</title>
   </head>
   <body>
@@ -18,11 +18,9 @@
 
       <header class="display-header">
         <div class="title-block">
-          <p class="overline">ROUTE OBSERVATORY / LIVE FIELD</p>
           <h1 id="display-title">情報通信路</h1>
-          <p class="title-reading">じょうほう・つうしんろ</p>
         </div>
-        <div class="telemetry">
+        <div class="telemetry" hidden>
           <div class="connection" aria-live="polite">
             <span id="connection-light" class="connection-light"></span>
             <span id="connection-state">接続しています</span>
@@ -33,11 +31,7 @@
         </div>
       </header>
 
-      <section class="observation-caption" aria-label="作品の説明">
-        <p>
-          会場から、来場者が選んだWebサイト方向へ、<br />
-          その瞬間に見えた道をたどっています。
-        </p>
+      <section class="observation-caption" aria-label="作品の記録">
         <dl class="observation-counts">
           <div>
             <dt>育った木</dt>
@@ -50,13 +44,7 @@
         </dl>
       </section>
 
-      <aside class="join-ticket" aria-label="スマートフォンから参加">
-        <div class="ticket-copy">
-          <p class="ticket-label">YOUR ROUTE</p>
-          <h2>あなたの道を<br />森へ送る</h2>
-          <p>スマートフォンで読み取ってください</p>
-          <span>route-forest.wowazun.net</span>
-        </div>
+      <aside class="join-qr-panel" aria-label="スマートフォンから参加">
         <img
           class="join-qr"
           src="/qr.svg"
@@ -64,13 +52,8 @@
           height="212"
           alt="参加ページ https://route-forest.wowazun.net のQRコード"
         />
+        <p>スマートフォンで読み取ってください</p>
       </aside>
-
-      <div class="field-key" aria-hidden="true">
-        <span><i class="key-tree"></i>観測した地点</span>
-        <span><i class="key-fog"></i>見えない区間</span>
-        <span><i class="key-route"></i>いま届いた道</span>
-      </div>
 
       <aside
         id="performance-monitor"
@@ -114,15 +97,7 @@
         </p>
       </aside>
 
-      <p id="empty-message" class="empty-message">
-        森は、次の経路を待っています。
-      </p>
-
-      <noscript>
-        <p class="noscript-message">
-          この作品の表示にはJavaScriptが必要です。
-        </p>
-      </noscript>
+      <p id="empty-message" class="empty-message" hidden></p>
     </main>
     <script type="module" src="/display.js?v=31"></script>
   </body>
