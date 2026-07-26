@@ -773,7 +773,7 @@ function updateScene(now, deltaSeconds) {
 function drawBackground(now) {
   context.save();
   context.lineWidth = 1;
-  context.strokeStyle = "rgba(157, 187, 192, 0.045)";
+  context.strokeStyle = "rgba(157, 187, 192, 0.018)";
   const drift = (now * 0.004) % 90;
   for (let y = -90 + drift; y < state.height + 90; y += 90) {
     context.beginPath();
@@ -1157,19 +1157,30 @@ function resize() {
 
   if (state.motes.length === 0) {
     const random = randomFrom(411);
+    const moteCount = visualStyle.density.ambientWindMotes;
+    const aspectRatio = Math.max(0.5, state.width / Math.max(1, state.height));
+    const columns = Math.ceil(Math.sqrt(moteCount * aspectRatio));
+    const rows = Math.ceil(moteCount / columns);
     state.motes = Array.from(
-      { length: visualStyle.density.ambientWindMotes },
-      () => ({
-      x: random(),
-      y: random(),
-      vx: 0,
-      vy: 0,
-      speed: 28 + random() * 44,
-      size: 0.65 + random() * 1.35,
-      trail: 5 + random() * 11,
-      alpha: 0.1 + random() * 0.2,
-      phase: random() * Math.PI * 2,
-      }),
+      { length: moteCount },
+      (_, index) => {
+        const slot = (index * 71) % (columns * rows);
+        return {
+          x:
+            ((slot % columns) + 0.18 + random() * 0.64) /
+            columns,
+          y:
+            (Math.floor(slot / columns) + 0.18 + random() * 0.64) /
+            rows,
+          vx: 0,
+          vy: 0,
+          speed: 28 + random() * 44,
+          size: (0.65 + random() * 1.35) * 1.5,
+          trail: 5 + random() * 11,
+          alpha: 0.09 + random() * 0.17,
+          phase: random() * Math.PI * 2,
+        };
+      },
     );
   }
 }

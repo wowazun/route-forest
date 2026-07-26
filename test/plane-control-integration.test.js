@@ -62,7 +62,9 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /function updateWindMotes/);
   assert.match(display, /windField\.sample\(/);
   assert.match(display, /ambientWindMotes/);
-  assert.match(displayPage, /display\.js\?v=23/);
+  assert.match(display, /size: \(0\.65 \+ random\(\) \* 1\.35\) \* 1\.5/);
+  assert.match(display, /Math\.sqrt\(moteCount \* aspectRatio\)/);
+  assert.match(displayPage, /display\.js\?v=24/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,

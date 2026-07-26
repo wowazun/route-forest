@@ -63,7 +63,7 @@ export const visualStyle = deepFreeze({
   },
   density: {
     activeBirds: 3,
-    ambientWindMotes: 160,
+    ambientWindMotes: 300,
     performanceTrees: 220,
     performanceFogs: 12,
     performancePlanes: 32,
