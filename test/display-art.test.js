@@ -74,11 +74,19 @@ test("builds the existing fog texture with seven radial gradients", () => {
   };
 
   assert.equal(createFogTexture(texture, () => 0.5), texture);
-  assert.equal(texture.width, 256);
-  assert.equal(texture.height, 144);
+  assert.equal(texture.width, 416);
+  assert.equal(texture.height, 304);
   assert.equal(operationCount(context, "createRadialGradient"), 7);
   assert.equal(operationCount(context, "addColorStop"), 21);
   assert.equal(operationCount(context, "fillRect"), 7);
+  for (const [, x, y, width, height] of context.operations.filter(
+    ([operation]) => operation === "fillRect",
+  )) {
+    assert.ok(x >= 0);
+    assert.ok(y >= 0);
+    assert.ok(x + width <= texture.width);
+    assert.ok(y + height <= texture.height);
+  }
 });
 
 test("preserves the dashed route, bird, and highlight drawing commands", () => {

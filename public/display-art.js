@@ -153,13 +153,14 @@ export function strokeSmoothRoute(context, { segments, routeId }) {
 }
 
 export function createFogTexture(texture, random) {
-  texture.width = 256;
-  texture.height = 144;
+  const padding = 80;
+  texture.width = 256 + padding * 2;
+  texture.height = 144 + padding * 2;
   const textureContext = texture.getContext("2d");
 
   for (let index = 0; index < 7; index += 1) {
-    const x = 34 + random() * 188;
-    const y = 34 + random() * 76;
+    const x = padding + 34 + random() * 188;
+    const y = padding + 34 + random() * 76;
     const radius = 28 + random() * 46;
     const gradient = textureContext.createRadialGradient(
       x,
@@ -334,14 +335,24 @@ export { getTreeArtCacheKey };
 export function drawFog(context, { fog, now, texture }) {
   const age = (now - fog.bornAt) / fog.life;
   const fade = Math.sin(Math.min(1, age) * Math.PI);
+  const textureScaleX =
+    Number.isFinite(texture.width) && texture.width > 0
+      ? texture.width / 256
+      : 1;
+  const textureScaleY =
+    Number.isFinite(texture.height) && texture.height > 0
+      ? texture.height / 144
+      : 1;
   context.save();
   context.globalAlpha = fade * 0.58;
   for (let index = 0; index < 3; index += 1) {
     const phase = fog.phase + index * 1.7;
     const x = fog.x + Math.sin(now * 0.00025 + phase) * fog.radius * 0.38;
     const y = fog.y + Math.cos(now * 0.0002 + phase) * fog.radius * 0.18;
-    const width = fog.radius * (1.55 + index * 0.12);
-    const height = fog.radius * (0.72 + index * 0.06);
+    const width =
+      fog.radius * (1.55 + index * 0.12) * textureScaleX;
+    const height =
+      fog.radius * (0.72 + index * 0.06) * textureScaleY;
     context.drawImage(
       texture,
       x - width / 2,
