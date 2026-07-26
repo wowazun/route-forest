@@ -1,6 +1,7 @@
 import { createBirdSequence } from "./experience-contract.js";
 import {
   lifecycleProgress,
+  routeHighlightSegments,
   shouldReleaseFeather,
   visibleRouteSegments,
 } from "./exhibition-effects.js";
@@ -739,8 +740,11 @@ function drawBackground(now) {
 
 function drawHighlight(highlight, now) {
   const progress = lifecycleProgress(now, highlight.bornAt, highlight.life);
+  const plane = state.planes.find(
+    (candidate) => candidate.flightId === highlight.flightId,
+  );
   drawRouteHighlight(context, {
-    segments: visibleRouteSegments(highlight.points),
+    segments: routeHighlightSegments(highlight.points, plane),
     routeId: highlight.flightId,
     progress,
   });

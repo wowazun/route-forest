@@ -33,6 +33,7 @@ test("connects the mobile controller and display through owned server events", a
   );
   assert.match(display, /source\.addEventListener\("plane-control"/);
   assert.match(display, /source\.addEventListener\("route-highlight"/);
+  assert.match(display, /routeHighlightSegments\(highlight\.points, plane\)/);
   assert.match(display, /source\.addEventListener\("controller-ended"/);
   assert.match(display, /Number\.POSITIVE_INFINITY/);
   assert.match(display, /paper: letter\.controller\.color/);
@@ -55,7 +56,7 @@ test("connects the mobile controller and display through owned server events", a
     /plane\.heading = Math\.atan2\(integrated\.vy, integrated\.vx\)/,
   );
   assert.doesNotMatch(display, /plane\.heading = smoothPlaneHeading/);
-  assert.match(displayPage, /display\.js\?v=19/);
+  assert.match(displayPage, /display\.js\?v=20/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,

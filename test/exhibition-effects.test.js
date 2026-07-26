@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   letterTransform,
   lifecycleProgress,
+  routeHighlightSegments,
   shouldReleaseFeather,
   visibleRouteSegments,
 } from "../public/exhibition-effects.js";
@@ -36,6 +37,33 @@ test("does not falsely illuminate unobserved fog intervals", () => {
     visibleRouteSegments(points).map((segment) => segment.index),
     [0, 3],
   );
+});
+
+test("extends a route highlight to the moving owned paper plane", () => {
+  const points = [
+    { source: { kind: "tree" }, x: 10, y: 20 },
+    { source: { kind: "tree" }, x: 50, y: 40 },
+  ];
+  const first = routeHighlightSegments(points, { x: 90, y: 70 });
+  const moved = routeHighlightSegments(points, { x: 130, y: 95 });
+
+  assert.equal(first.length, 2);
+  assert.deepEqual(first.at(-1).from, points.at(-1));
+  assert.deepEqual(first.at(-1).to, {
+    x: 90,
+    y: 70,
+    source: { kind: "plane" },
+  });
+  assert.equal(moved.at(-1).to.x, 130);
+  assert.equal(moved.at(-1).to.y, 95);
+});
+
+test("does not connect a highlight from an unobserved fog endpoint", () => {
+  const points = [
+    { source: { kind: "tree" }, x: 10, y: 20 },
+    { source: { kind: "fog" }, x: 50, y: 40 },
+  ];
+  assert.deepEqual(routeHighlightSegments(points, { x: 90, y: 70 }), []);
 });
 
 test("keeps feathers rare outside forced simulation playback", () => {

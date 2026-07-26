@@ -48,6 +48,31 @@ export function visibleRouteSegments(points) {
   return Object.freeze(segments);
 }
 
+export function routeHighlightSegments(points, plane = null) {
+  const segments = [...visibleRouteSegments(points)];
+  const endpoint = points.at(-1);
+  if (
+    !endpoint ||
+    endpoint.source?.kind === "fog" ||
+    !Number.isFinite(plane?.x) ||
+    !Number.isFinite(plane?.y)
+  ) {
+    return Object.freeze(segments);
+  }
+  segments.push(
+    Object.freeze({
+      from: endpoint,
+      to: Object.freeze({
+        x: plane.x,
+        y: plane.y,
+        source: Object.freeze({ kind: "plane" }),
+      }),
+      index: Math.max(0, points.length - 1),
+    }),
+  );
+  return Object.freeze(segments);
+}
+
 export function shouldReleaseFeather(routeHash, force = false) {
   return force || Math.abs(Number(routeHash) || 0) % 4 === 0;
 }
