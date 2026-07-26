@@ -41,7 +41,7 @@ export const visualStyle = deepFreeze({
     planeFlightMs: 11_000,
     routeMinimumMs: 5_200,
     routeStepMs: 1_050,
-    birdFlightSpeedPxPerSecond: 320,
+    birdFlightSpeedPxPerSecond: 160,
   },
   physics: {
     plane: {

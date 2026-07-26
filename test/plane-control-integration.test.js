@@ -67,7 +67,7 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /mote\.history\.length > 7/);
   assert.match(display, /context\.quadraticCurveTo\(/);
   assert.doesNotMatch(display, /mote\.x \* state\.width/);
-  assert.match(displayPage, /display\.js\?v=38/);
+  assert.match(displayPage, /display\.js\?v=39/);
   assert.match(display, /treeFieldSpread\(existing\.length\)/);
   assert.match(display, /if \(clearance >= 1\) return \{ nx, ny \}/);
   assert.match(display, /context\.scale\(calibration\.artScale/);
