@@ -45,7 +45,7 @@ export const visualStyle = deepFreeze({
   },
   physics: {
     plane: {
-      windStrength: 52,
+      windStrength: 104,
       controlStrength: 80,
       drag: 1.15,
       maxSpeed: 230,
