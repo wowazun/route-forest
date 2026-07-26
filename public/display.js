@@ -3,6 +3,7 @@ import {
   lifecycleProgress,
   routeHighlightSegments,
   shouldReleaseFeather,
+  shouldRevealFog,
   visibleRouteSegments,
 } from "./exhibition-effects.js";
 import {
@@ -514,7 +515,15 @@ function updateFlights(now) {
           dropSeed(tree, now, flight.id, index, bird);
         }
       }
-      if (point.source.kind === "fog" && !flight.fogged.has(index)) {
+    }
+
+    for (let index = 0; index < points.length; index += 1) {
+      const point = points[index];
+      if (
+        point?.source.kind === "fog" &&
+        !flight.fogged.has(index) &&
+        shouldRevealFog(pathPosition, index)
+      ) {
         flight.fogged.add(index);
         state.fogs.push({
           x: point.x,

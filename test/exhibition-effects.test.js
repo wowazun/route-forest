@@ -5,6 +5,7 @@ import {
   lifecycleProgress,
   routeHighlightSegments,
   shouldReleaseFeather,
+  shouldRevealFog,
   visibleRouteSegments,
 } from "../public/exhibition-effects.js";
 
@@ -64,6 +65,13 @@ test("does not connect a highlight from an unobserved fog endpoint", () => {
     { source: { kind: "fog" }, x: 50, y: 40 },
   ];
   assert.deepEqual(routeHighlightSegments(points, { x: 90, y: 70 }), []);
+});
+
+test("reveals fog before the bird reaches its unknown waypoint", () => {
+  assert.equal(shouldRevealFog(1.7, 3), false);
+  assert.equal(shouldRevealFog(1.75, 3), true);
+  assert.equal(shouldRevealFog(2.4, 3), true);
+  assert.equal(shouldRevealFog(0, 1), true);
 });
 
 test("keeps feathers rare outside forced simulation playback", () => {

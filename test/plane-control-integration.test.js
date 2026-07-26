@@ -56,7 +56,8 @@ test("connects the mobile controller and display through owned server events", a
     /plane\.heading = Math\.atan2\(integrated\.vy, integrated\.vx\)/,
   );
   assert.doesNotMatch(display, /plane\.heading = smoothPlaneHeading/);
-  assert.match(displayPage, /display\.js\?v=20/);
+  assert.match(display, /shouldRevealFog\(pathPosition, index\)/);
+  assert.match(displayPage, /display\.js\?v=21/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,

@@ -73,6 +73,17 @@ export function routeHighlightSegments(points, plane = null) {
   return Object.freeze(segments);
 }
 
+export function shouldRevealFog(
+  pathPosition,
+  fogIndex,
+  leadSegments = 1.25,
+) {
+  const position = Math.max(0, Number(pathPosition) || 0);
+  const index = Math.max(0, Number(fogIndex) || 0);
+  const lead = Math.max(0, Number(leadSegments) || 0);
+  return position >= Math.max(0, index - lead);
+}
+
 export function shouldReleaseFeather(routeHash, force = false) {
   return force || Math.abs(Number(routeHash) || 0) % 4 === 0;
 }
