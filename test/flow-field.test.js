@@ -38,6 +38,29 @@ test("adds a bounded deterministic turn around nearby growing trees", () => {
   assert.ok(Math.hypot(withTree.x, withTree.y) <= 1.0001);
 });
 
+test("keeps the shared wind calm away from tree-centered vortices", () => {
+  const field = createWindField({
+    seed: 411,
+    treeInfluence: 0.8,
+    treeRadius: 120,
+  });
+  const empty = createTreeWindIndex();
+  const trees = createTreeWindIndex({
+    trees: [{ x: 300, y: 200, size: 58, seed: "tree-a" }],
+  });
+
+  assert.deepEqual(field.sample(20, 20, 4, empty), { x: 0, y: 0 });
+  assert.deepEqual(field.sample(20, 20, 4, trees), { x: 0, y: 0 });
+  assert.ok(Math.hypot(...Object.values(field.sample(340, 200, 4, trees))) > 0);
+});
+
+test("allows ambient curl only when explicitly requested", () => {
+  const field = createWindField({ baseInfluence: 1 });
+  assert.ok(
+    Math.hypot(...Object.values(field.sample(320, 180, 2))) > 0,
+  );
+});
+
 test("limits tree lookup and keeps heading stable near zero speed", () => {
   const index = createTreeWindIndex({
     trees: Array.from({ length: 40 }, (_, item) => ({

@@ -160,20 +160,22 @@ export function createWindField({
   octaves = 3,
   timeScale = 1,
   maximum = 1,
+  baseInfluence = 0,
   treeInfluence = 0.34,
   treeRadius = 92,
 } = {}) {
   const curl = createCurlNoise({ seed, scale, octaves });
   const safeMaximum = clamp(Number(maximum) || 1, 0.1, 3);
   const safeTimeScale = clamp(Number(timeScale) || 1, 0, 8);
+  const safeBaseInfluence = clamp(Number(baseInfluence) || 0, 0, 1);
   const safeTreeInfluence = clamp(Number(treeInfluence) || 0, 0, 2);
   const safeTreeRadius = clamp(Number(treeRadius) || 92, 24, 360);
 
   return Object.freeze({
     sample(x, y, timeSeconds = 0, treeIndex = null) {
       const base = curl.sample(x, y, timeSeconds * safeTimeScale);
-      let windX = base.x;
-      let windY = base.y;
+      let windX = base.x * safeBaseInfluence;
+      let windY = base.y * safeBaseInfluence;
       const nearby =
         treeIndex && typeof treeIndex.query === "function"
           ? treeIndex.query(x, y, safeTreeRadius * 1.5)
@@ -205,6 +207,8 @@ export function createWindField({
         windX = (windX / magnitude) * safeMaximum;
         windY = (windY / magnitude) * safeMaximum;
       }
+      if (Math.abs(windX) < 1e-12) windX = 0;
+      if (Math.abs(windY) < 1e-12) windY = 0;
       return Object.freeze({ x: windX, y: windY });
     },
   });
