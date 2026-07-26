@@ -92,8 +92,10 @@ test("reveals fog before the bird reaches its unknown waypoint", () => {
   assert.equal(shouldRevealFog(0, 1), true);
 });
 
-test("keeps feathers rare outside forced simulation playback", () => {
+test("releases feathers for half of normal routes and all forced simulations", () => {
   assert.equal(shouldReleaseFeather(8), true);
   assert.equal(shouldReleaseFeather(9), false);
+  assert.equal(shouldReleaseFeather(10), true);
+  assert.equal(shouldReleaseFeather(11), false);
   assert.equal(shouldReleaseFeather(9, true), true);
 });

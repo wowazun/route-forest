@@ -203,5 +203,5 @@ export function shouldRevealFog(
 }
 
 export function shouldReleaseFeather(routeHash, force = false) {
-  return force || Math.abs(Number(routeHash) || 0) % 4 === 0;
+  return force || Math.abs(Number(routeHash) || 0) % 2 === 0;
 }

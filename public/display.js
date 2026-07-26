@@ -7,7 +7,7 @@ import {
   shouldReleaseFeather,
   shouldRevealFog,
   visibleRouteSegments,
-} from "./exhibition-effects.js";
+} from "./exhibition-effects.js?v=2";
 import {
   createFogTexture,
   drawFog,
