@@ -57,7 +57,9 @@ test("connects the mobile controller and display through owned server events", a
   );
   assert.doesNotMatch(display, /plane\.heading = smoothPlaneHeading/);
   assert.match(display, /shouldRevealFog\(pathPosition, index\)/);
-  assert.match(displayPage, /display\.js\?v=21/);
+  assert.match(display, /motionPath\.totalLength \/ speed/);
+  assert.match(display, /pathPosition = bird\.pathPosition/);
+  assert.match(displayPage, /display\.js\?v=22/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,

@@ -1,7 +1,9 @@
 import { createBirdSequence } from "./experience-contract.js";
 import {
+  createArcLengthPath,
   lifecycleProgress,
   routeHighlightSegments,
+  sampleArcLengthPath,
   shouldReleaseFeather,
   shouldRevealFog,
   visibleRouteSegments,
@@ -283,25 +285,41 @@ function waypointPositions(flight) {
   return resolved;
 }
 
-function flightPosition(flight, progress = flight.progress) {
-  const points = waypointPositions(flight);
+function flightMotionPath(flight, points) {
+  const cacheKey = `${state.width}:${state.height}`;
+  if (flight.motionPath?.cacheKey !== cacheKey) {
+    flight.motionPath = {
+      cacheKey,
+      path: createArcLengthPath(points),
+    };
+  }
+  return flight.motionPath.path;
+}
+
+function flightPosition(
+  flight,
+  progress = flight.progress,
+  suppliedPoints = null,
+) {
+  const points = suppliedPoints || waypointPositions(flight);
   if (points.length === 0) {
     return {
       x: state.width * 0.5,
       y: state.height * 0.5,
       angle: 0,
       fogAmount: 0,
+      pathPosition: 0,
     };
   }
-  const pathPosition = progress * Math.max(1, points.length - 1);
-  const segment = Math.min(Math.floor(pathPosition), points.length - 1);
-  const local = pathPosition - Math.floor(pathPosition);
+  const motionPath = flightMotionPath(flight, points);
+  const sampled = sampleArcLengthPath(
+    motionPath,
+    motionPath.totalLength * Math.max(0, Math.min(1, progress)),
+  );
+  const segment = sampled.segmentIndex;
+  const local = sampled.local;
   const from = points[segment] || points[0];
   const to = points[Math.min(segment + 1, points.length - 1)] || from;
-  const arcHeight = Math.min(42, Math.abs(to.x - from.x) * 0.12);
-  const tangentX = to.x - from.x;
-  const tangentY =
-    to.y - from.y - Math.cos(local * Math.PI) * Math.PI * arcHeight;
   const easedFog = local * local * (3 - 2 * local);
   const fromFog = from.source?.kind === "fog";
   const toFog = to.source?.kind === "fog";
@@ -314,16 +332,11 @@ function flightPosition(flight, progress = flight.progress) {
           ? 1 - easedFog
           : 0;
   return {
-    x: from.x + (to.x - from.x) * local,
-    y:
-      from.y +
-      (to.y - from.y) * local -
-      Math.sin(local * Math.PI) * arcHeight,
-    angle:
-      Math.abs(tangentX) + Math.abs(tangentY) > 0.001
-        ? Math.atan2(tangentY, tangentX)
-        : 0,
+    x: sampled.x,
+    y: sampled.y,
+    angle: sampled.angle,
     fogAmount,
+    pathPosition: sampled.pathPosition,
   };
 }
 
@@ -437,21 +450,21 @@ function launchFlights(now) {
     state.pendingFlights.length > 0
   ) {
     const route = state.pendingFlights.shift();
-    const duration = prefersReducedMotion
-      ? 250
-      : isSimulation
-        ? Math.max(1_200, route.waypoints.length * 240)
-        : Math.max(
-            visualStyle.motion.routeMinimumMs,
-            route.waypoints.length * visualStyle.motion.routeStepMs,
-          );
-    state.flights.push({
+    const flight = {
       ...route,
       startedAt: now,
-      duration,
       visited: new Set(),
       fogged: new Set(),
-    });
+    };
+    const points = waypointPositions(flight);
+    const motionPath = flightMotionPath(flight, points);
+    const speed =
+      visualStyle.motion.birdFlightSpeedPxPerSecond *
+      (isSimulation ? 1.8 : 1);
+    flight.duration = prefersReducedMotion
+      ? 250
+      : Math.max(400, (motionPath.totalLength / speed) * 1_000);
+    state.flights.push(flight);
   }
 }
 
@@ -502,9 +515,9 @@ function updateFlights(now) {
     const progress = flight.looping
       ? (elapsed % flight.duration) / flight.duration
       : Math.min(1, elapsed / flight.duration);
-    const pathPosition = progress * Math.max(1, points.length - 1);
+    const bird = flightPosition(flight, progress, points);
+    const pathPosition = bird.pathPosition;
     const reachedIndex = Math.floor(pathPosition);
-    const bird = flightPosition(flight, progress);
 
     for (let index = 0; index <= reachedIndex; index += 1) {
       const point = points[index];

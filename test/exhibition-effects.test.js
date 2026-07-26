@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  createArcLengthPath,
   letterTransform,
   lifecycleProgress,
   routeHighlightSegments,
+  sampleArcLengthPath,
   shouldReleaseFeather,
   shouldRevealFog,
   visibleRouteSegments,
@@ -13,6 +15,22 @@ test("clamps visual effect lifecycles", () => {
   assert.equal(lifecycleProgress(50, 0, 100), 0.5);
   assert.equal(lifecycleProgress(-10, 0, 100), 0);
   assert.equal(lifecycleProgress(200, 0, 100), 1);
+});
+
+test("samples unequal route segments at a constant path speed", () => {
+  const path = createArcLengthPath([
+    { x: 0, y: 0 },
+    { x: 0, y: 100 },
+    { x: 0, y: 500 },
+  ]);
+  const firstBoundary = sampleArcLengthPath(path, 100);
+  const middleOfRoute = sampleArcLengthPath(path, 300);
+
+  assert.equal(path.totalLength, 500);
+  assert.ok(Math.abs(firstBoundary.y - 100) < 0.001);
+  assert.ok(Math.abs(middleOfRoute.y - 300) < 0.001);
+  assert.equal(firstBoundary.pathPosition, 1);
+  assert.equal(middleOfRoute.pathPosition, 1.5);
 });
 
 test("folds a letter into a narrow paper-plane silhouette", () => {
