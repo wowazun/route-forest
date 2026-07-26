@@ -62,6 +62,9 @@
           <button type="button" data-mode="plane-wind-lab">
             PLANE + WIND
           </button>
+          <button type="button" data-mode="feather-lab">
+            FEATHER LAB
+          </button>
         </fieldset>
         <label>
           <span>TREE AGE <output id="tree-age-output">72</output></span>
@@ -134,6 +137,49 @@
           <span>COUNT <output id="bird-count-output">1</output></span>
           <input id="bird-count" type="range" min="1" max="12" value="1" />
         </label>
+      </section>
+
+      <section id="feather-controls" class="feather-controls" aria-label="羽の造形と落下確認">
+        <label class="feather-preset">
+          <span>FEATHER PRESET</span>
+          <select id="feather-preset">
+            <option value="falling">01 ゆらゆら落下</option>
+            <option value="closeup">02 羽の造形</option>
+            <option value="trio">03 位相の異なる3枚</option>
+            <option value="compare">04 改善前・改善後</option>
+          </select>
+        </label>
+        <label>
+          <span>PROGRESS <output id="feather-progress-output">38%</output></span>
+          <input id="feather-progress" type="range" min="0" max="1000" value="380" />
+        </label>
+        <label>
+          <span>BARBS / SIDE <output id="feather-barbs-output">15</output></span>
+          <input id="feather-barbs" type="range" min="6" max="28" value="15" />
+        </label>
+        <label>
+          <span>SHAFT CURVE <output id="feather-curve-output">46%</output></span>
+          <input id="feather-curve" type="range" min="-80" max="80" value="46" />
+        </label>
+        <label>
+          <span>ROOT TAPER <output id="feather-taper-output">74%</output></span>
+          <input id="feather-taper" type="range" min="0" max="100" value="74" />
+        </label>
+        <label>
+          <span>SWAY <output id="feather-sway-output">34px</output></span>
+          <input id="feather-sway" type="range" min="0" max="80" value="34" />
+        </label>
+        <label>
+          <span>FALL DISTANCE <output id="feather-fall-output">148px</output></span>
+          <input id="feather-fall" type="range" min="40" max="240" value="148" />
+        </label>
+        <label>
+          <span>SIZE <output id="feather-size-output">135%</output></span>
+          <input id="feather-size" type="range" min="70" max="240" value="135" />
+        </label>
+        <button id="feather-replay" class="message-replay" type="button">
+          REPLAY FALL
+        </button>
       </section>
 
       <section id="fog-controls" class="fog-controls" aria-label="霧の造形確認">
@@ -381,6 +427,6 @@
         <a id="selected-link" href="/art-lab">選択中の案へのリンク</a>
       </footer>
     </main>
-    <script type="module" src="/art-lab.js"></script>
+    <script type="module" src="/art-lab.js?v=2"></script>
   </body>
 </html>

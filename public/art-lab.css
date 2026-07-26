@@ -206,6 +206,7 @@ a {
 }
 
 .bird-controls,
+.feather-controls,
 .fog-controls,
 .message-controls,
 .wind-controls {
@@ -226,6 +227,10 @@ body.is-bird-lab .bird-controls {
   display: grid;
 }
 
+body.is-feather-lab .feather-controls {
+  display: grid;
+}
+
 body.is-fog-lab .fog-controls {
   display: grid;
 }
@@ -242,6 +247,10 @@ body.is-bird-lab .proof:not(.is-candidate) {
   display: none;
 }
 
+body.is-feather-lab .proof:not(.is-candidate) {
+  display: none;
+}
+
 body.is-fog-lab .proof:not(.is-candidate) {
   display: none;
 }
@@ -255,6 +264,7 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
 }
 
 .bird-controls label > span,
+.feather-controls label > span,
 .fog-controls label > span,
 .message-controls label > span,
 .wind-controls label > span {
@@ -264,6 +274,7 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
 }
 
 .bird-controls output,
+.feather-controls output,
 .fog-controls output,
 .message-controls output,
 .wind-controls output {
@@ -272,6 +283,8 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
 
 .bird-controls input,
 .bird-controls select,
+.feather-controls input,
+.feather-controls select,
 .fog-controls input,
 .fog-controls select,
 .message-controls input,
@@ -283,6 +296,7 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
 }
 
 .bird-controls select,
+.feather-controls select,
 .fog-controls select,
 .message-controls select,
 .wind-controls select {
@@ -296,6 +310,8 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
 
 .bird-controls select:focus-visible,
 .bird-controls input:focus-visible,
+.feather-controls select:focus-visible,
+.feather-controls input:focus-visible,
 .fog-controls select:focus-visible,
 .fog-controls input:focus-visible,
 .message-controls select:focus-visible,
@@ -608,6 +624,10 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
     grid-template-columns: repeat(4, minmax(120px, 1fr));
   }
 
+  .feather-controls {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+  }
+
   .fog-controls {
     grid-template-columns: repeat(4, minmax(120px, 1fr));
   }
@@ -693,6 +713,11 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
     padding: 20px;
   }
 
+  .feather-controls {
+    grid-template-columns: 1fr 1fr;
+    padding: 20px;
+  }
+
   .fog-controls {
     grid-template-columns: 1fr 1fr;
     padding: 20px;
@@ -709,6 +734,7 @@ body.is-plane-wind-lab .proof:not(.is-candidate) {
   }
 
   .bird-preset,
+  .feather-preset,
   .message-preset,
   .wind-preset {
     grid-column: 1 / -1;

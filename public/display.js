@@ -33,6 +33,11 @@ import {
   createWindField,
   integratePlane,
 } from "./flow-field.js";
+import {
+  DEFAULT_FEATHER_ART,
+  drawFeatherArt,
+  featherPoseAt,
+} from "./feather-art.js";
 import { createSimulation } from "./simulator-scenarios.js";
 import { visualStyle } from "./visual-style.js";
 
@@ -365,11 +370,10 @@ function releaseFeather(flight, now) {
   state.feathers.push({
     x: position.x - Math.cos(position.angle) * 10,
     y: position.y - Math.sin(position.angle) * 10,
-    vx: -5 + (hashText(flight.id) % 11),
-    vy: 8,
     bornAt: now,
     life: prefersReducedMotion ? 600 : visualStyle.motion.featherDriftMs,
     phase: (hashText(flight.id) % 628) / 100,
+    seed: flight.id,
   });
 }
 
@@ -582,11 +586,6 @@ function updateEffects(now, deltaSeconds) {
     (seed) => lifecycleProgress(now, seed.bornAt, seed.life) < 1,
   );
 
-  for (const feather of state.feathers) {
-    feather.x += feather.vx * deltaSeconds;
-    feather.y += feather.vy * deltaSeconds;
-    feather.vy += 3.5 * deltaSeconds;
-  }
   state.feathers = state.feathers.filter(
     (feather) => lifecycleProgress(now, feather.bornAt, feather.life) < 1,
   );
@@ -994,23 +993,22 @@ function drawSeed(seed, now) {
 
 function drawFeather(feather, now) {
   const progress = lifecycleProgress(now, feather.bornAt, feather.life);
-  const alpha = Math.sin(progress * Math.PI) * 0.78;
-  const angle = Math.sin(progress * Math.PI * 5 + feather.phase) * 0.65;
-
-  context.save();
-  context.globalAlpha = alpha;
-  context.translate(feather.x, feather.y);
-  context.rotate(angle);
-  context.strokeStyle = palette.paper;
-  context.lineWidth = 1;
-  context.beginPath();
-  context.moveTo(0, -8);
-  context.quadraticCurveTo(6, -2, 0, 10);
-  context.quadraticCurveTo(-5, -1, 0, -8);
-  context.moveTo(0, -6);
-  context.lineTo(0, 11);
-  context.stroke();
-  context.restore();
+  const pose = featherPoseAt(progress, feather.phase, {
+    sway: prefersReducedMotion ? 5 : DEFAULT_FEATHER_ART.sway,
+    fallDistance: prefersReducedMotion ? 28 : DEFAULT_FEATHER_ART.fallDistance,
+    swayCycles: prefersReducedMotion ? 0.35 : DEFAULT_FEATHER_ART.swayCycles,
+    rotation: prefersReducedMotion ? 0.12 : DEFAULT_FEATHER_ART.rotation,
+  });
+  drawFeatherArt(context, {
+    x: feather.x + pose.x,
+    y: feather.y + pose.y,
+    angle: pose.angle,
+    alpha: pose.alpha * 0.82,
+    color: palette.paper,
+    glowColor: palette.seed,
+    glow: 0.08,
+    seed: feather.seed,
+  });
 }
 
 function drawLetter(letter, now) {

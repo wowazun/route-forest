@@ -30,6 +30,11 @@ import {
   integratePlane,
   smoothPlaneHeading,
 } from "./flow-field.js";
+import {
+  DEFAULT_FEATHER_ART,
+  drawFeatherArt,
+  featherPoseAt,
+} from "./feather-art.js";
 import { visualStyle } from "./visual-style.js";
 
 const proofs = document.querySelector("#proofs");
@@ -57,6 +62,24 @@ const birdOutputs = {
   glow: document.querySelector("#bird-glow-output"),
   fog: document.querySelector("#bird-fog-output"),
   count: document.querySelector("#bird-count-output"),
+};
+const featherPreset = document.querySelector("#feather-preset");
+const featherProgress = document.querySelector("#feather-progress");
+const featherBarbs = document.querySelector("#feather-barbs");
+const featherCurve = document.querySelector("#feather-curve");
+const featherTaper = document.querySelector("#feather-taper");
+const featherSway = document.querySelector("#feather-sway");
+const featherFall = document.querySelector("#feather-fall");
+const featherSize = document.querySelector("#feather-size");
+const featherReplay = document.querySelector("#feather-replay");
+const featherOutputs = {
+  progress: document.querySelector("#feather-progress-output"),
+  barbs: document.querySelector("#feather-barbs-output"),
+  curve: document.querySelector("#feather-curve-output"),
+  taper: document.querySelector("#feather-taper-output"),
+  sway: document.querySelector("#feather-sway-output"),
+  fall: document.querySelector("#feather-fall-output"),
+  size: document.querySelector("#feather-size-output"),
 };
 const fogPreset = document.querySelector("#fog-preset");
 const fogHops = document.querySelector("#fog-hops");
@@ -153,6 +176,7 @@ const modes = new Set([
   "bird-lab",
   "bird-silhouettes",
   "adopted-wing",
+  "feather-lab",
   "fog-lab",
   "message-lab",
   "plane-wind-lab",
@@ -169,6 +193,7 @@ let selectedVariant = variants.some(
 let lastFrame = performance.now();
 let sceneTime = 2_400;
 let flapAutomatic = true;
+let featherAutomatic = true;
 let messageAutomatic = false;
 let windPadPointer = null;
 let windFieldCache = null;
@@ -194,6 +219,13 @@ const BIRD_PRESETS = Object.freeze({
   "normal-glow": Object.freeze({ flap: null, angle: 0, size: 120, speed: 45, glow: 35, fog: 0, count: 1 }),
   "strong-glow": Object.freeze({ flap: null, angle: 0, size: 120, speed: 45, glow: 100, fog: 0, count: 1 }),
   flock: Object.freeze({ flap: null, angle: 0, size: 82, speed: 80, glow: 24, fog: 0, count: 8 }),
+});
+
+const FEATHER_PRESETS = Object.freeze({
+  falling: Object.freeze({ automatic: true, progress: 0.38, scene: "single" }),
+  closeup: Object.freeze({ automatic: false, progress: 0.5, scene: "closeup" }),
+  trio: Object.freeze({ automatic: true, progress: 0.2, scene: "trio" }),
+  compare: Object.freeze({ automatic: false, progress: 0.5, scene: "compare" }),
 });
 
 const FOG_PRESETS = Object.freeze({
@@ -255,6 +287,35 @@ function updateBirdControlOutputs() {
   birdOutputs.glow.textContent = `${birdGlow.value}%`;
   birdOutputs.fog.textContent = `${birdFog.value}%`;
   birdOutputs.count.textContent = birdCount.value;
+}
+
+function updateFeatherControlOutputs(
+  progressValue = Number(featherProgress.value) / 1000,
+) {
+  featherOutputs.progress.textContent = `${Math.round(progressValue * 100)}%`;
+  featherOutputs.barbs.textContent = featherBarbs.value;
+  featherOutputs.curve.textContent = `${featherCurve.value}%`;
+  featherOutputs.taper.textContent = `${featherTaper.value}%`;
+  featherOutputs.sway.textContent = `${featherSway.value}px`;
+  featherOutputs.fall.textContent = `${featherFall.value}px`;
+  featherOutputs.size.textContent = `${featherSize.value}%`;
+}
+
+function applyFeatherPreset(name) {
+  const selected = FEATHER_PRESETS[name] || FEATHER_PRESETS.falling;
+  featherPreset.value = name in FEATHER_PRESETS ? name : "falling";
+  featherAutomatic = Boolean(selected.automatic);
+  featherProgress.value = String(Math.round(selected.progress * 1000));
+  if (featherAutomatic) {
+    sceneTime = 0;
+    paused = false;
+    toggleMotion.classList.remove("is-selected");
+  }
+  updateFeatherControlOutputs(selected.progress);
+  const url = new URL(window.location.href);
+  url.searchParams.set("featherPreset", featherPreset.value);
+  window.history.replaceState({}, "", url);
+  selectedLink.href = url.pathname + url.search;
 }
 
 function updateFogControlOutputs() {
@@ -1440,6 +1501,144 @@ function drawPlaneWindWorkbench(proof, time) {
   proof.article.dataset.windY = proof.planeWind.wind.y.toFixed(3);
 }
 
+function drawLegacyFeather(context, x, y, scale = 1) {
+  context.save();
+  context.translate(x, y);
+  context.scale(scale, scale);
+  context.rotate(-0.18);
+  context.strokeStyle = visualStyle.palette.paper;
+  context.globalAlpha = 0.66;
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(0, -8);
+  context.quadraticCurveTo(6, -2, 0, 10);
+  context.quadraticCurveTo(-5, -1, 0, -8);
+  context.moveTo(0, -6);
+  context.lineTo(0, 11);
+  context.stroke();
+  context.restore();
+}
+
+function featherArtOptions(proof, progress, phase = 0, scale = 1) {
+  const pose = featherPoseAt(progress, phase, {
+    sway: Number(featherSway.value),
+    fallDistance: Number(featherFall.value),
+    swayCycles: DEFAULT_FEATHER_ART.swayCycles,
+    rotation: DEFAULT_FEATHER_ART.rotation,
+  });
+  return {
+    pose,
+    art: {
+      angle: pose.angle,
+      scale,
+      alpha: pose.alpha * 0.88,
+      color: visualStyle.palette.paper,
+      glowColor: visualStyle.palette.seed,
+      glow: 0.1,
+      seed: `feather-lab-${proof.variant.id}-${phase}`,
+      curve: Number(featherCurve.value) / 100,
+      barbsPerSide: Number(featherBarbs.value),
+      rootTaper: Number(featherTaper.value) / 100,
+    },
+  };
+}
+
+function drawFeatherWorkbench(proof, time) {
+  const { context, width, height } = proof;
+  const presetName = featherPreset.value;
+  const selected = FEATHER_PRESETS[presetName] || FEATHER_PRESETS.falling;
+  const automaticProgress = ((time % 4_200) + 4_200) % 4_200 / 4_200;
+  const progress = featherAutomatic
+    ? automaticProgress
+    : Number(featherProgress.value) / 1000;
+  const size = Number(featherSize.value) / 100;
+
+  if (featherAutomatic) {
+    featherProgress.value = String(Math.round(progress * 1000));
+    updateFeatherControlOutputs(progress);
+  }
+
+  context.fillStyle = "rgba(231, 238, 240, 0.38)";
+  context.font = '10px "SFMono-Regular", Consolas, monospace';
+  context.fillText(
+    `FEATHER / ${presetName.toUpperCase()} / ${Math.round(progress * 100)}%`,
+    20,
+    30,
+  );
+
+  if (selected.scene === "compare") {
+    const comparisonScale = 4.2 * size;
+    drawLegacyFeather(context, width * 0.29, height * 0.5, comparisonScale);
+    drawFeatherArt(context, {
+      x: width * 0.7,
+      y: height * 0.5,
+      angle: -0.2,
+      scale: comparisonScale,
+      alpha: 0.88,
+      color: visualStyle.palette.paper,
+      glowColor: visualStyle.palette.seed,
+      glow: 0.1,
+      seed: `feather-compare-${proof.variant.id}`,
+      curve: Number(featherCurve.value) / 100,
+      barbsPerSide: Number(featherBarbs.value),
+      rootTaper: Number(featherTaper.value) / 100,
+    });
+    context.globalAlpha = 0.5;
+    context.fillText("BEFORE", width * 0.29 - 22, height * 0.76);
+    context.fillText("CURVED SHAFT + BARBS", width * 0.7 - 64, height * 0.76);
+    context.globalAlpha = 1;
+  } else if (selected.scene === "closeup") {
+    drawFeatherArt(context, {
+      x: width * 0.5,
+      y: height * 0.52,
+      angle: -0.22,
+      scale: 4.6 * size,
+      alpha: 0.92,
+      color: visualStyle.palette.paper,
+      glowColor: visualStyle.palette.seed,
+      glow: 0.1,
+      seed: `feather-closeup-${proof.variant.id}`,
+      curve: Number(featherCurve.value) / 100,
+      barbsPerSide: Number(featherBarbs.value),
+      rootTaper: Number(featherTaper.value) / 100,
+    });
+  } else if (selected.scene === "trio") {
+    for (let index = 0; index < 3; index += 1) {
+      const localProgress = (progress + index * 0.22) % 1;
+      const { pose, art } = featherArtOptions(
+        proof,
+        localProgress,
+        index * 2.07,
+        2.2 * size,
+      );
+      drawFeatherArt(context, {
+        ...art,
+        x: width * (0.28 + index * 0.22) + pose.x,
+        y: height * 0.16 + pose.y * 1.85,
+      });
+    }
+  } else {
+    const { pose, art } = featherArtOptions(
+      proof,
+      progress,
+      0.4,
+      2.5 * size,
+    );
+    drawFeatherArt(context, {
+      ...art,
+      x: width * 0.5 + pose.x,
+      y: height * 0.17 + pose.y * 2.1,
+    });
+  }
+
+  proof.frameCount += 1;
+  proof.article.dataset.frames = String(proof.frameCount);
+  proof.article.dataset.mode = mode;
+  proof.article.dataset.featherPreset = presetName;
+  proof.article.dataset.featherProgress = progress.toFixed(3);
+  proof.article.dataset.featherBarbs = featherBarbs.value;
+}
+
 function drawProof(proof, time) {
   const { context, width, height, variant } = proof;
   if (width <= 0 || height <= 0) return;
@@ -1450,6 +1649,11 @@ function drawProof(proof, time) {
   context.fillStyle = gradient;
   context.fillRect(0, 0, width, height);
   drawWind(context, width, height, time);
+
+  if (mode === "feather-lab") {
+    drawFeatherWorkbench(proof, time);
+    return;
+  }
 
   if (mode === "plane-wind-lab") {
     drawPlaneWindWorkbench(proof, time);
@@ -1602,6 +1806,7 @@ function updateModePresentation() {
       mode === "bird-silhouettes" ||
       mode === "adopted-wing",
   );
+  document.body.classList.toggle("is-feather-lab", mode === "feather-lab");
   document.body.classList.toggle("is-fog-lab", mode === "fog-lab");
   document.body.classList.toggle("is-message-lab", mode === "message-lab");
   document.body.classList.toggle(
@@ -1635,6 +1840,34 @@ birdPreset.addEventListener("change", () => {
 });
 birdSilhouette.addEventListener("change", () => {
   selectBirdSilhouette(birdSilhouette.value);
+});
+featherPreset.addEventListener("change", () => {
+  applyFeatherPreset(featherPreset.value);
+});
+featherProgress.addEventListener("input", () => {
+  featherAutomatic = false;
+  updateFeatherControlOutputs();
+});
+for (const control of [
+  featherBarbs,
+  featherCurve,
+  featherTaper,
+  featherSway,
+  featherFall,
+  featherSize,
+]) {
+  control.addEventListener("input", () => {
+    updateFeatherControlOutputs();
+  });
+}
+featherReplay.addEventListener("click", () => {
+  featherPreset.value = "falling";
+  featherAutomatic = true;
+  featherProgress.value = "0";
+  sceneTime = 0;
+  paused = false;
+  toggleMotion.classList.remove("is-selected");
+  updateFeatherControlOutputs(0);
 });
 fogPreset.addEventListener("change", () => {
   applyFogPreset(fogPreset.value);
@@ -1791,6 +2024,11 @@ applyBirdPreset(
     : "normal-flight",
 );
 selectBirdSilhouette(searchParameters.get("birdShape") || "swallow");
+applyFeatherPreset(
+  FEATHER_PRESETS[searchParameters.get("featherPreset")]
+    ? searchParameters.get("featherPreset")
+    : "falling",
+);
 applyFogPreset(
   FOG_PRESETS[searchParameters.get("fogPreset")]
     ? searchParameters.get("fogPreset")
@@ -1829,6 +2067,17 @@ window.__routeForestArtLab = Object.freeze({
       glow: Number(birdGlow.value),
       fog: Number(birdFog.value),
       count: Number(birdCount.value),
+    },
+    feather: {
+      preset: featherPreset.value,
+      progress: Number(featherProgress.value) / 1000,
+      automatic: featherAutomatic,
+      barbsPerSide: Number(featherBarbs.value),
+      curve: Number(featherCurve.value) / 100,
+      rootTaper: Number(featherTaper.value) / 100,
+      sway: Number(featherSway.value),
+      fallDistance: Number(featherFall.value),
+      size: Number(featherSize.value),
     },
     fog: {
       preset: fogPreset.value,
@@ -1883,6 +2132,9 @@ window.__routeForestArtLab = Object.freeze({
       fogPreset: proof.article.dataset.fogPreset || null,
       messagePreset: proof.article.dataset.messagePreset || null,
       messageState: proof.article.dataset.messageState || null,
+      featherPreset: proof.article.dataset.featherPreset || null,
+      featherProgress: Number(proof.article.dataset.featherProgress || 0),
+      featherBarbs: Number(proof.article.dataset.featherBarbs || 0),
       windPreset: proof.article.dataset.windPreset || null,
       windTrees: Number(proof.article.dataset.windTrees || 0),
       windEnabled: proof.article.dataset.windEnabled || null,

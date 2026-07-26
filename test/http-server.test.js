@@ -286,6 +286,10 @@ test("serves the exhibition display and starts an anonymized event stream", asyn
     assert.equal(birdArt.status, 200);
     assert.match(birdArt.headers.get("content-type"), /^text\/javascript/);
     assert.match(await birdArt.text(), /BIRD_ART_VERSION/);
+    const featherArt = await fetch(`${baseUrl}/feather-art.js`);
+    assert.equal(featherArt.status, 200);
+    assert.match(featherArt.headers.get("content-type"), /^text\/javascript/);
+    assert.match(await featherArt.text(), /DEFAULT_FEATHER_ART/);
     const messageArt = await fetch(`${baseUrl}/message-art.js`);
     assert.equal(messageArt.status, 200);
     assert.match(messageArt.headers.get("content-type"), /^text\/javascript/);
