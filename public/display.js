@@ -20,7 +20,7 @@ import {
   drawRoutePath,
   drawTree,
   getTreeArtCacheKey,
-} from "./display-art.js?v=5";
+} from "./display-art.js?v=6";
 import {
   birdWorldAnchor,
   smoothBirdHeading,

@@ -106,7 +106,7 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /mote\.history\.length > 7/);
   assert.match(display, /context\.quadraticCurveTo\(/);
   assert.doesNotMatch(display, /mote\.x \* state\.width/);
-  assert.match(displayPage, /display\.js\?v=45/);
+  assert.match(displayPage, /display\.js\?v=46/);
   assert.match(display, /treeFieldSpread\(existing\.length\)/);
   assert.match(display, /if \(clearance >= 1\) return \{ nx, ny \}/);
   assert.match(display, /context\.scale\(calibration\.artScale/);
@@ -118,10 +118,10 @@ test("connects the mobile controller and display through owned server events", a
     display,
     /function completeFlight[\s\S]*?state\.highlights\.push[\s\S]*?function updateFlights/,
   );
-  assert.match(displayArt, /from "\.\/route-art\.js\?v=2"/);
+  assert.match(displayArt, /from "\.\/route-art\.js\?v=3"/);
   assert.match(routeArt, /ROUTE_ART_VERSION/);
   assert.match(routeArt, /drawRouteLightFlow/);
-  assert.match(artLab, /from "\.\/route-art\.js\?v=2"/);
+  assert.match(artLab, /from "\.\/route-art\.js\?v=3"/);
   assert.match(artLab, /drawRouteLightFlow/);
   assert.match(artLabPage, /data-mode="route-lab"/);
   for (const preset of [

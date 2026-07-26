@@ -1,15 +1,16 @@
 const TAU = Math.PI * 2;
 
-export const ROUTE_ART_VERSION = "route-light-flow-v2";
+export const ROUTE_ART_VERSION = "route-light-flow-v3";
 
 export const DEFAULT_ROUTE_LIGHT_STYLE = Object.freeze({
   mode: "complete",
   lightCount: 4,
   lightSize: 1,
-  brightness: 0.86,
-  tailLength: 0.11,
-  trailWidth: 1.08,
-  trailPersistence: 0.64,
+  brightness: 0.96,
+  tailLength: 0.13,
+  trailWidth: 1.12,
+  trailPersistence: 0.72,
+  afterglowSegments: 2,
   trailBreakup: 0.42,
   curveWander: 1,
   treeReaction: 0.72,
@@ -386,8 +387,8 @@ function drawLightParticle(
   context.save();
   context.translate(head.x, head.y);
   context.rotate(head.angle + (random() - 0.5) * 0.16);
-  context.shadowColor = rgba(color, alpha * 0.82);
-  context.shadowBlur = 4 + size * 4.2;
+  context.shadowColor = rgba(color, alpha * 0.9);
+  context.shadowBlur = 7 + size * 6;
   context.fillStyle = rgba(color, alpha);
   context.beginPath();
   context.ellipse(
@@ -602,6 +603,10 @@ export function drawRouteLightFlow(
     3,
     Math.min(6, Math.round(settings.lightCount)),
   );
+  const afterglowSegments = Math.max(
+    0,
+    Math.min(2, Math.round(settings.afterglowSegments)),
+  );
 
   context.save();
   context.lineJoin = "round";
@@ -609,7 +614,7 @@ export function drawRouteLightFlow(
   for (let index = 0; index < model.events.length; index += 1) {
     const event = model.events[index];
     const local = scaledProgress - index;
-    if (local < -0.02 || local > 1.22) continue;
+    if (local < -0.02 || local > 1.22 + afterglowSegments) continue;
     if (event.kind === "fog") {
       if (local >= 0 && local <= 0.32) {
         drawTreeReaction(context, event.fromTree, local / 0.32, {
@@ -674,10 +679,16 @@ export function drawRouteLightFlow(
 
     if (hasTrail && flow > 0) {
       const trailFade =
-        local <= 0.86 ? 1 : clamp(1 - (local - 0.86) / 0.34);
+        local <= 0.86
+          ? 1
+          : clamp(
+              1 -
+                (local - 0.86) /
+                  (0.34 + afterglowSegments),
+            );
       strokePathRange(context, segment.path, trailStart, flow, {
         width: 1.55 * settings.trailWidth,
-        alpha: settings.brightness * 0.39 * trailFade,
+        alpha: settings.brightness * 0.46 * trailFade,
         color: settings.color,
         breakup: settings.trailBreakup,
         seed: segment.path.seed ^ 0x165667b1,
@@ -708,8 +719,8 @@ export function drawRouteLightFlow(
         size: settings.lightSize * (1.45 + random() * 1.05),
         alpha:
           settings.brightness *
-          (0.44 + random() * 0.38) *
-          (1 - lightIndex * 0.08) *
+          (0.62 + random() * 0.36) *
+          (1 - lightIndex * 0.06) *
           emerge *
           dissolve,
         tailLength:

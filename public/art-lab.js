@@ -38,7 +38,7 @@ import {
 import {
   drawRouteLightFlow,
   ROUTE_ART_VERSION,
-} from "./route-art.js?v=2";
+} from "./route-art.js?v=3";
 import { visualStyle } from "./visual-style.js?v=2";
 
 const proofs = document.querySelector("#proofs");
