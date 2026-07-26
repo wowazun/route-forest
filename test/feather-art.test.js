@@ -3,10 +3,32 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  DEFAULT_FEATHER_ART,
   createFeatherGeometry,
   drawFeatherArt,
   featherPoseAt,
 } from "../public/feather-art.js";
+
+test("keeps the Art Lab-approved feather values as production defaults", () => {
+  assert.deepEqual(
+    {
+      scale: DEFAULT_FEATHER_ART.scale,
+      curve: DEFAULT_FEATHER_ART.curve,
+      barbsPerSide: DEFAULT_FEATHER_ART.barbsPerSide,
+      rootTaper: DEFAULT_FEATHER_ART.rootTaper,
+      sway: DEFAULT_FEATHER_ART.sway,
+      fallDistance: DEFAULT_FEATHER_ART.fallDistance,
+    },
+    {
+      scale: 0.7,
+      curve: -0.8,
+      barbsPerSide: 22,
+      rootTaper: 0,
+      sway: 41,
+      fallDistance: 240,
+    },
+  );
+});
 
 test("builds a curved shaft with many root-tapered barbs", () => {
   const geometry = createFeatherGeometry({
@@ -65,9 +87,9 @@ test("shares the feather renderer between production and Art Lab", async () => {
     readFile(new URL("../public/art-lab.html", import.meta.url), "utf8"),
   ]);
 
-  assert.match(display, /from "\.\/feather-art\.js"/);
+  assert.match(display, /from "\.\/feather-art\.js\?v=2"/);
   assert.match(display, /drawFeatherArt\(context/);
-  assert.match(artLab, /from "\.\/feather-art\.js"/);
+  assert.match(artLab, /from "\.\/feather-art\.js\?v=2"/);
   assert.match(artLab, /drawFeatherWorkbench/);
   assert.match(html, /data-mode="feather-lab"/);
   for (const id of [

@@ -37,7 +37,7 @@ import {
   DEFAULT_FEATHER_ART,
   drawFeatherArt,
   featherPoseAt,
-} from "./feather-art.js";
+} from "./feather-art.js?v=2";
 import { createSimulation } from "./simulator-scenarios.js";
 import { visualStyle } from "./visual-style.js";
 
@@ -1003,6 +1003,7 @@ function drawFeather(feather, now) {
     x: feather.x + pose.x,
     y: feather.y + pose.y,
     angle: pose.angle,
+    scale: DEFAULT_FEATHER_ART.scale,
     alpha: pose.alpha * 0.82,
     color: palette.paper,
     glowColor: palette.seed,

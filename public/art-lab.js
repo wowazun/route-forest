@@ -34,7 +34,7 @@ import {
   DEFAULT_FEATHER_ART,
   drawFeatherArt,
   featherPoseAt,
-} from "./feather-art.js";
+} from "./feather-art.js?v=2";
 import { visualStyle } from "./visual-style.js";
 
 const proofs = document.querySelector("#proofs");
