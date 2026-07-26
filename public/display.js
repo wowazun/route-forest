@@ -6,8 +6,9 @@ import {
   sampleArcLengthPath,
   shouldReleaseFeather,
   shouldRevealFog,
+  treeFieldSpread,
   visibleRouteSegments,
-} from "./exhibition-effects.js?v=2";
+} from "./exhibition-effects.js?v=3";
 import {
   createFogTexture,
   drawFog,
@@ -143,21 +144,57 @@ function randomFrom(seed) {
 
 function chooseTreePosition(nodeId) {
   const random = randomFrom(hashText(nodeId));
-  const baseX = 0.06 + random() * 0.88;
-  const baseY = 0.14 + random() * 0.78;
   const existing = [...state.trees.values()];
+  const targetSpread = treeFieldSpread(existing.length);
+  const centerX = 0.5;
+  const centerY = 0.54;
+  const radiusX = 0.46;
+  const radiusY = 0.4;
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  const baseAngle =
+    existing.length * goldenAngle + (random() - 0.5) * 0.52;
+  const spacingScale = Math.max(0.7, 1 - existing.length / 720);
+  const spacingX = 76 * spacingScale;
+  const spacingY = 92 * spacingScale;
+  let best = null;
+  let bestClearance = -Infinity;
 
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const angle = attempt * 2.39996 + random() * 0.45;
-    const radius = attempt === 0 ? 0 : 0.018 * Math.sqrt(attempt);
-    const nx = Math.max(0.04, Math.min(0.96, baseX + Math.cos(angle) * radius));
-    const ny = Math.max(0.12, Math.min(0.94, baseY + Math.sin(angle) * radius));
-    const clear = existing.every(
-      (tree) => Math.hypot(tree.nx - nx, tree.ny - ny) > 0.052,
-    );
-    if (clear) return { nx, ny };
+  const clearanceAt = (nx, ny) => {
+    if (existing.length === 0) return Infinity;
+    return existing.reduce((minimum, tree) => {
+      const dx = ((tree.nx - nx) * state.width) / spacingX;
+      const dy = ((tree.ny - ny) * state.height) / spacingY;
+      return Math.min(minimum, Math.hypot(dx, dy));
+    }, Infinity);
+  };
+
+  for (let expansion = 0; expansion < 8; expansion += 1) {
+    const spread = Math.min(1, targetSpread + expansion * 0.1);
+    for (let attempt = 0; attempt < 48; attempt += 1) {
+      const angle =
+        baseAngle + attempt * goldenAngle + (random() - 0.5) * 0.18;
+      const radialBias =
+        attempt === 0
+          ? spread
+          : spread * Math.sqrt(0.28 + random() * 0.72);
+      const nx = Math.max(
+        0.04,
+        Math.min(0.96, centerX + Math.cos(angle) * radiusX * radialBias),
+      );
+      const ny = Math.max(
+        0.12,
+        Math.min(0.94, centerY + Math.sin(angle) * radiusY * radialBias),
+      );
+      const clearance = clearanceAt(nx, ny);
+      if (clearance > bestClearance) {
+        best = { nx, ny };
+        bestClearance = clearance;
+      }
+      if (clearance >= 1) return { nx, ny };
+    }
   }
-  return { nx: baseX, ny: baseY };
+
+  return best || { nx: centerX, ny: centerY };
 }
 
 function ensureTree(node) {

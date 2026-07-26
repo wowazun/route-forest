@@ -205,3 +205,8 @@ export function shouldRevealFog(
 export function shouldReleaseFeather(routeHash, force = false) {
   return force || Math.abs(Number(routeHash) || 0) % 2 === 0;
 }
+
+export function treeFieldSpread(treeCount) {
+  const count = Math.max(0, Number(treeCount) || 0);
+  return Math.min(1, Math.sqrt((count + 1) / 64));
+}

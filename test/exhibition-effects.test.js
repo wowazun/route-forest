@@ -8,6 +8,7 @@ import {
   sampleArcLengthPath,
   shouldReleaseFeather,
   shouldRevealFog,
+  treeFieldSpread,
   visibleRouteSegments,
 } from "../public/exhibition-effects.js";
 
@@ -98,4 +99,12 @@ test("releases feathers for half of normal routes and all forced simulations", (
   assert.equal(shouldReleaseFeather(10), true);
   assert.equal(shouldReleaseFeather(11), false);
   assert.equal(shouldReleaseFeather(9, true), true);
+});
+
+test("expands the tree field gradually from the center", () => {
+  assert.ok(treeFieldSpread(0) < treeFieldSpread(8));
+  assert.ok(treeFieldSpread(8) < treeFieldSpread(32));
+  assert.ok(treeFieldSpread(32) < treeFieldSpread(63));
+  assert.equal(treeFieldSpread(63), 1);
+  assert.equal(treeFieldSpread(220), 1);
 });
