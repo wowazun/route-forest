@@ -86,6 +86,14 @@ test("keeps production paper-plane heading highly responsive", () => {
   assert.ok(visualStyle.physics.plane.headingResponse >= 30);
 });
 
+test("runs production paper planes with doubled wind force", () => {
+  assert.equal(visualStyle.physics.plane.windStrength, 52);
+  assert.ok(
+    visualStyle.physics.plane.controlStrength >
+      visualStyle.physics.plane.windStrength,
+  );
+});
+
 test("lets one mature route tree move the field well beyond its canopy", () => {
   const field = createWindField(visualStyle.physics.wind);
   const trees = createTreeWindIndex({
