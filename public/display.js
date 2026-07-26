@@ -659,6 +659,40 @@ function updateDiagnostics(now) {
   exhibition.dataset.windTrees = String(state.windIndex.size);
 }
 
+function updateWindMotes(now, deltaSeconds) {
+  if (state.width <= 0 || state.height <= 0) return;
+  const motionScale = prefersReducedMotion ? 0.22 : 1;
+  const time = now / 1_000;
+
+  for (const mote of state.motes) {
+    const x = mote.x * state.width;
+    const y = mote.y * state.height;
+    const wind = windField.sample(
+      x,
+      y,
+      time,
+      state.windIndex,
+    );
+    const targetVx = wind.x * mote.speed;
+    const targetVy = wind.y * mote.speed;
+    const response = 1 - Math.exp(-3.2 * deltaSeconds);
+    mote.vx += (targetVx - mote.vx) * response;
+    mote.vy += (targetVy - mote.vy) * response;
+    mote.x =
+      ((mote.x +
+        (mote.vx * deltaSeconds * motionScale) / state.width) %
+        1 +
+        1) %
+      1;
+    mote.y =
+      ((mote.y +
+        (mote.vy * deltaSeconds * motionScale) / state.height) %
+        1 +
+        1) %
+      1;
+  }
+}
+
 function updateScene(now, deltaSeconds) {
   updateFlights(now);
   updateEffects(now, deltaSeconds);
@@ -672,6 +706,7 @@ function updateScene(now, deltaSeconds) {
     }
   }
   refreshWindIndex(now);
+  updateWindMotes(now, deltaSeconds);
   state.fogs = state.fogs.filter((fog) => now - fog.bornAt < fog.life);
   state.planes = state.planes.filter((plane) => now - plane.bornAt < plane.life);
   for (const [routeId, route] of state.routeRegistry) {
@@ -738,7 +773,7 @@ function updateScene(now, deltaSeconds) {
 function drawBackground(now) {
   context.save();
   context.lineWidth = 1;
-  context.strokeStyle = "rgba(157, 187, 192, 0.065)";
+  context.strokeStyle = "rgba(157, 187, 192, 0.045)";
   const drift = (now * 0.004) % 90;
   for (let y = -90 + drift; y < state.height + 90; y += 90) {
     context.beginPath();
@@ -751,11 +786,31 @@ function drawBackground(now) {
   }
 
   for (const mote of state.motes) {
-    const x = (mote.x * state.width + now * mote.speed * 0.001) % state.width;
-    const y =
-      mote.y * state.height + Math.sin(now * 0.0003 + mote.phase) * 12;
-    context.fillStyle = `rgba(184, 222, 213, ${mote.alpha})`;
-    context.fillRect(x, y, mote.size, mote.size);
+    const x = mote.x * state.width;
+    const y = mote.y * state.height;
+    const speed = Math.hypot(mote.vx, mote.vy);
+    const directionX = speed > 0.01 ? mote.vx / speed : 1;
+    const directionY = speed > 0.01 ? mote.vy / speed : 0;
+    const shimmer =
+      0.72 + Math.sin(now * 0.0017 + mote.phase * 2.3) * 0.28;
+    const alpha = mote.alpha * shimmer;
+    const trail = mote.trail * Math.min(1, speed / 24);
+
+    context.beginPath();
+    context.moveTo(
+      x - directionX * trail,
+      y - directionY * trail,
+    );
+    context.lineTo(x, y);
+    context.lineCap = "round";
+    context.lineWidth = mote.size * 0.72;
+    context.strokeStyle = `rgba(184, 222, 213, ${alpha * 0.52})`;
+    context.stroke();
+
+    context.beginPath();
+    context.fillStyle = `rgba(196, 231, 222, ${alpha})`;
+    context.arc(x, y, mote.size, 0, Math.PI * 2);
+    context.fill();
   }
   context.restore();
 }
@@ -1102,14 +1157,20 @@ function resize() {
 
   if (state.motes.length === 0) {
     const random = randomFrom(411);
-    state.motes = Array.from({ length: 70 }, () => ({
+    state.motes = Array.from(
+      { length: visualStyle.density.ambientWindMotes },
+      () => ({
       x: random(),
       y: random(),
-      speed: 4 + random() * 14,
-      size: 0.5 + random() * 1.4,
-      alpha: 0.08 + random() * 0.2,
+      vx: 0,
+      vy: 0,
+      speed: 28 + random() * 44,
+      size: 0.65 + random() * 1.35,
+      trail: 5 + random() * 11,
+      alpha: 0.1 + random() * 0.2,
       phase: random() * Math.PI * 2,
-    }));
+      }),
+    );
   }
 }
 
