@@ -28,7 +28,6 @@ import {
   createTreeWindIndex,
   createWindField,
   integratePlane,
-  smoothPlaneHeading,
 } from "./flow-field.js";
 import { createSimulation } from "./simulator-scenarios.js";
 import { visualStyle } from "./visual-style.js";
@@ -699,12 +698,9 @@ function updateScene(now, deltaSeconds) {
       plane.y = integrated.y;
       plane.vx = integrated.vx;
       plane.vy = integrated.vy;
-      plane.heading = smoothPlaneHeading(
-        plane.heading,
-        integrated,
-        deltaSeconds,
-        { response: planePhysics.headingResponse },
-      );
+      if (Math.hypot(integrated.vx, integrated.vy) >= 0.5) {
+        plane.heading = Math.atan2(integrated.vy, integrated.vx);
+      }
     }
     if (plane.looping) {
       if (plane.x > state.width + 24) plane.x = -24;

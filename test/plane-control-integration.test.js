@@ -48,7 +48,12 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /restoreControllerPlane\(route, now\)/);
   assert.match(display, /dataset\.controllerPlanes/);
   assert.match(display, /heading: Math\.atan2\(initialVy, initialVx\)/);
-  assert.match(displayPage, /display\.js\?v=17/);
+  assert.match(
+    display,
+    /plane\.heading = Math\.atan2\(integrated\.vy, integrated\.vx\)/,
+  );
+  assert.doesNotMatch(display, /plane\.heading = smoothPlaneHeading/);
+  assert.match(displayPage, /display\.js\?v=18/);
   assert.match(
     display,
     /else if \(isDemo\) \{\s*startDemo\(\);\s*connectLiveEvents\(\);/,
