@@ -63,11 +63,21 @@ const performanceLongTasks = document.querySelector(
 );
 const performancePulse = document.querySelector("#performance-pulse");
 const performanceProfile = document.querySelector("#performance-profile");
+const calibrationPanel = document.querySelector("#display-calibration");
+const calibrationClose = document.querySelector("#calibration-close");
+const calibrationReset = document.querySelector("#calibration-reset");
+const calibrationCopy = document.querySelector("#calibration-copy");
+const calibrationStatus = document.querySelector("#calibration-status");
+const artScaleControl = document.querySelector("#art-scale");
+const artScaleOutput = document.querySelector("#art-scale-output");
+const qrScaleControl = document.querySelector("#qr-scale");
+const qrScaleOutput = document.querySelector("#qr-scale-output");
 
 const prefersReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
 ).matches;
 const searchParameters = new URLSearchParams(window.location.search);
+const CALIBRATION_STORAGE_KEY = "route-forest-display-calibration-v1";
 const isDemo = searchParameters.has("demo");
 const isPerformance = searchParameters.has("performance");
 const simulationScenario = searchParameters.get("simulation");
@@ -75,6 +85,129 @@ const isSimulation = Boolean(simulationScenario);
 const palette = visualStyle.palette;
 const planePhysics = visualStyle.physics.plane;
 const windField = createWindField(visualStyle.physics.wind);
+
+function storedCalibration() {
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(CALIBRATION_STORAGE_KEY) || "null",
+    );
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function clampedNumberParameter(name, fallback, minimum, maximum) {
+  const raw = searchParameters.get(name);
+  const value = raw === null ? Number(fallback) : Number(raw);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
+const savedCalibration = storedCalibration();
+const calibration = {
+  artScale: clampedNumberParameter(
+    "artScale",
+    savedCalibration.artScale ?? 1,
+    0.5,
+    2,
+  ),
+  qrScale: clampedNumberParameter(
+    "qrScale",
+    savedCalibration.qrScale ?? 1,
+    0.5,
+    2,
+  ),
+};
+
+function calibrationUrl(includePanel = !calibrationPanel.hidden) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("artScale", calibration.artScale.toFixed(2));
+  url.searchParams.set("qrScale", calibration.qrScale.toFixed(2));
+  if (includePanel) url.searchParams.set("calibrate", "1");
+  else url.searchParams.delete("calibrate");
+  return url;
+}
+
+function applyCalibration({ updateUrl = false, message = "" } = {}) {
+  artScaleControl.value = String(Math.round(calibration.artScale * 100));
+  qrScaleControl.value = String(Math.round(calibration.qrScale * 100));
+  artScaleOutput.textContent = `${Math.round(calibration.artScale * 100)}%`;
+  qrScaleOutput.textContent = `${Math.round(calibration.qrScale * 100)}%`;
+  exhibition.style.setProperty("--qr-scale", String(calibration.qrScale));
+  calibrationStatus.textContent = message || "Cキーで表示・非表示";
+
+  if (!updateUrl) return;
+  try {
+    window.localStorage.setItem(
+      CALIBRATION_STORAGE_KEY,
+      JSON.stringify(calibration),
+    );
+  } catch {
+    // URL parameters still preserve the calibration when storage is blocked.
+  }
+  window.history.replaceState({}, "", calibrationUrl());
+}
+
+function setCalibrationVisible(visible) {
+  calibrationPanel.hidden = !visible;
+  calibrationStatus.textContent = visible
+    ? "変更はこのブラウザとURLへ自動保存されます"
+    : "";
+  window.history.replaceState({}, "", calibrationUrl(visible));
+}
+
+calibrationPanel.hidden = searchParameters.get("calibrate") !== "1";
+applyCalibration();
+
+for (const [control, name] of [
+  [artScaleControl, "artScale"],
+  [qrScaleControl, "qrScale"],
+]) {
+  control.addEventListener("input", () => {
+    calibration[name] = Number(control.value) / 100;
+    applyCalibration({
+      updateUrl: true,
+      message: "変更を保存しました",
+    });
+  });
+}
+
+calibrationClose.addEventListener("click", () => {
+  setCalibrationVisible(false);
+});
+
+calibrationReset.addEventListener("click", () => {
+  calibration.artScale = 1;
+  calibration.qrScale = 1;
+  applyCalibration({
+    updateUrl: true,
+    message: "標準サイズへ戻しました",
+  });
+});
+
+calibrationCopy.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(calibrationUrl(false).href);
+    calibrationStatus.textContent = "設定URLをコピーしました";
+  } catch {
+    calibrationStatus.textContent = "アドレスバーのURLをコピーしてください";
+  }
+});
+
+window.addEventListener("keydown", (event) => {
+  const target = event.target;
+  const isEditing =
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLButtonElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement;
+  if (!isEditing && event.key.toLowerCase() === "c") {
+    setCalibrationVisible(calibrationPanel.hidden);
+  } else if (event.key === "Escape" && !calibrationPanel.hidden) {
+    setCalibrationVisible(false);
+  }
+});
 
 const fogTexture = createFogTexture(
   document.createElement("canvas"),
@@ -1140,6 +1273,12 @@ function drawTreeLayer(now) {
 
 function draw(now) {
   context.clearRect(0, 0, state.width, state.height);
+  context.save();
+  if (calibration.artScale !== 1) {
+    context.translate(state.width * 0.5, state.height * 0.5);
+    context.scale(calibration.artScale, calibration.artScale);
+    context.translate(state.width * -0.5, state.height * -0.5);
+  }
   drawBackground(now);
   for (const highlight of state.highlights) drawHighlight(highlight, now);
   for (const flight of state.flights) drawFlightRoute(flight, now);
@@ -1151,6 +1290,7 @@ function draw(now) {
   }
   for (const letter of state.letters) drawLetter(letter, now);
   for (const plane of state.planes) drawPlane(plane, now);
+  context.restore();
 }
 
 function percentile(values, ratio) {
@@ -1699,6 +1839,7 @@ window.__routeForestDisplay = Object.freeze({
     fogs: state.fogs.length,
     controllerInputs: state.planeControls.size,
     windTrees: state.windIndex.size,
+    calibration: { ...calibration },
     plane: state.planes[0]
       ? {
           flightId: state.planes[0].flightId,

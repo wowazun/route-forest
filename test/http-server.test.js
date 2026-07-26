@@ -277,6 +277,9 @@ test("serves the exhibition display and starts an anonymized event stream", asyn
     assert.doesNotMatch(html, /YOUR ROUTE/);
     assert.doesNotMatch(html, /class="ticket-copy"/);
     assert.doesNotMatch(html, /class="field-key"/);
+    assert.match(html, /id="display-calibration"/);
+    assert.match(html, /id="art-scale"/);
+    assert.match(html, /id="qr-scale"/);
     assert.match(html, /id="performance-monitor"/);
 
     const stylesheet = await fetch(`${baseUrl}/display.css`);

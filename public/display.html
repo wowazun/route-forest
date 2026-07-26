@@ -9,7 +9,7 @@
       content="来場者の情報通信路を鳥と木と霧で描く、情報通信路の大型展示画面。"
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/display.css?v=2" />
+    <link rel="stylesheet" href="/display.css?v=3" />
     <title>情報通信路 — Exhibition Display</title>
   </head>
   <body>
@@ -45,14 +45,73 @@
       </section>
 
       <aside class="join-qr-panel" aria-label="スマートフォンから参加">
-        <img
-          class="join-qr"
-          src="/qr.svg"
-          width="212"
-          height="212"
-          alt="参加ページ https://route-forest.wowazun.net のQRコード"
-        />
+        <div class="join-qr-code">
+          <img
+            class="join-qr"
+            src="/qr.svg"
+            width="212"
+            height="212"
+            alt="参加ページ https://route-forest.wowazun.net のQRコード"
+          />
+        </div>
         <p>スマートフォンで読み取ってください</p>
+      </aside>
+
+      <aside
+        id="display-calibration"
+        class="display-calibration"
+        aria-label="会場表示の調整"
+        hidden
+      >
+        <header>
+          <div>
+            <p>EXHIBITION CALIBRATION</p>
+            <h2>会場表示の調整</h2>
+          </div>
+          <button
+            id="calibration-close"
+            class="calibration-close"
+            type="button"
+            aria-label="調整画面を閉じる"
+          >
+            ×
+          </button>
+        </header>
+        <label>
+          <span>
+            作品描画
+            <output id="art-scale-output" for="art-scale">100%</output>
+          </span>
+          <input
+            id="art-scale"
+            type="range"
+            min="50"
+            max="200"
+            step="1"
+            value="100"
+          />
+        </label>
+        <label>
+          <span>
+            QRコード
+            <output id="qr-scale-output" for="qr-scale">100%</output>
+          </span>
+          <input
+            id="qr-scale"
+            type="range"
+            min="50"
+            max="200"
+            step="1"
+            value="100"
+          />
+        </label>
+        <div class="calibration-actions">
+          <button id="calibration-reset" type="button">標準に戻す</button>
+          <button id="calibration-copy" type="button">設定URLをコピー</button>
+        </div>
+        <p id="calibration-status" class="calibration-status" aria-live="polite">
+          Cキーで表示・非表示
+        </p>
       </aside>
 
       <aside
@@ -99,6 +158,6 @@
 
       <p id="empty-message" class="empty-message" hidden></p>
     </main>
-    <script type="module" src="/display.js?v=33"></script>
+    <script type="module" src="/display.js?v=34"></script>
   </body>
 </html>
