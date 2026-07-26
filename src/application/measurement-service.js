@@ -30,6 +30,7 @@ export class MeasurementService {
   #resolver;
   #runner;
   #subscribers = new Set();
+  #treeVisitsByNode = new Map();
 
   constructor({
     anonymizer,
@@ -185,19 +186,21 @@ export class MeasurementService {
         });
       } else {
         record.status = "completed";
-        record.observation = normalizeRouteObservation({
-          measurementId,
-          observedAt: this.#clock().toISOString(),
-          destination: job.destination,
-          target,
-          method,
-          hops,
-          anonymizer: this.#anonymizer,
-          termination: {
-            kind,
-            exitCode: result.exitCode,
-          },
-        });
+        record.observation = this.#withTreeGrowth(
+          normalizeRouteObservation({
+            measurementId,
+            observedAt: this.#clock().toISOString(),
+            destination: job.destination,
+            target,
+            method,
+            hops,
+            anonymizer: this.#anonymizer,
+            termination: {
+              kind,
+              exitCode: result.exitCode,
+            },
+          }),
+        );
         this.#publishObservation(record.observation);
       }
     } catch (error) {
@@ -213,6 +216,23 @@ export class MeasurementService {
       job.destination = undefined;
       record.updatedAt = this.#clock().toISOString();
     }
+  }
+
+  #withTreeGrowth(observation) {
+    const steps = observation.steps.map((step) => {
+      if (step.kind !== "observed-node") return step;
+      const nodes = step.nodes.map((node) => {
+        const treeVisitCount =
+          (this.#treeVisitsByNode.get(node.nodeId) || 0) + 1;
+        this.#treeVisitsByNode.set(node.nodeId, treeVisitCount);
+        return Object.freeze({ ...node, treeVisitCount });
+      });
+      return Object.freeze({ ...step, nodes: Object.freeze(nodes) });
+    });
+    return Object.freeze({
+      ...observation,
+      steps: Object.freeze(steps),
+    });
   }
 
   #expireOldRecords() {

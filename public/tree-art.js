@@ -7,6 +7,15 @@ const DISPLAY_MAX_SIZE = 58;
 const MODEL_CACHE_LIMIT = 2_048;
 const modelCache = new Map();
 
+export function treeDisplaySizeForCount(count) {
+  const safeCount = Math.max(0, Number.isFinite(count) ? count : 0);
+  if (safeCount === 0) return DISPLAY_MIN_SIZE;
+  return Math.min(
+    DISPLAY_MAX_SIZE,
+    17 + Math.log2(safeCount + 1) * 8,
+  );
+}
+
 const BRANCH_TEMPLATES = Object.freeze([
   Object.freeze([
     [0.34, -1, 0.72, 0.18, 0.12],

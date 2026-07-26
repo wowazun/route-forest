@@ -1,3 +1,5 @@
+import { treeDisplaySizeForCount } from "./tree-art.js?v=2";
+
 const CONSENT_VERSION = "route-observation-v2";
 const POLL_INTERVAL_MS = 350;
 const POLL_DEADLINE_MS = 30_000;
@@ -401,6 +403,10 @@ function routeStepNode(step) {
   const tree = document.createElement("span");
   tree.className = "tree-symbol";
   tree.setAttribute("aria-hidden", "true");
+  const treeVisitCount = step.nodes[0]?.treeVisitCount;
+  const displaySize = treeDisplaySizeForCount(treeVisitCount);
+  const treeScale = Math.max(0.72, Math.min(1.5, displaySize / 36));
+  tree.style.setProperty("--tree-scale", treeScale.toFixed(3));
   const crown = document.createElement("span");
   crown.className = "tree-crown";
   const trunk = document.createElement("span");

@@ -14,8 +14,8 @@ test("connects the mobile controller and display through owned server events", a
 
   assert.match(page, /id="controller-pad"/);
   assert.match(page, /class="controller-pad-face"/);
-  assert.match(page, /styles\.css\?v=4/);
-  assert.match(page, /app\.js\?v=4/);
+  assert.match(page, /styles\.css\?v=5/);
+  assert.match(page, /app\.js\?v=5/);
   assert.match(page, /id="controller-color-swatch"/);
   assert.match(page, /id="route-highlight-button"/);
   assert.match(app, /authorization: `Bearer/);
@@ -67,7 +67,7 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /mote\.history\.length > 7/);
   assert.match(display, /context\.quadraticCurveTo\(/);
   assert.doesNotMatch(display, /mote\.x \* state\.width/);
-  assert.match(displayPage, /display\.js\?v=35/);
+  assert.match(displayPage, /display\.js\?v=36/);
   assert.match(display, /treeFieldSpread\(existing\.length\)/);
   assert.match(display, /if \(clearance >= 1\) return \{ nx, ny \}/);
   assert.match(display, /context\.scale\(calibration\.artScale/);

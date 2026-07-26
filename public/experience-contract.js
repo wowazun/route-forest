@@ -54,7 +54,7 @@ function readNode(value, stepIndex, nodeIndex) {
     );
   }
 
-  return Object.freeze({
+  const safeNode = {
     nodeId: assertString(
       node.nodeId,
       `steps[${stepIndex}].nodes[${nodeIndex}].nodeId`,
@@ -62,7 +62,15 @@ function readNode(value, stepIndex, nodeIndex) {
     ),
     addressFamily: node.addressFamily,
     reachedTarget: node.reachedTarget === true,
-  });
+  };
+  if (node.treeVisitCount !== undefined) {
+    safeNode.treeVisitCount = assertInteger(
+      node.treeVisitCount,
+      `steps[${stepIndex}].nodes[${nodeIndex}].treeVisitCount`,
+      1,
+    );
+  }
+  return Object.freeze(safeNode);
 }
 
 function readObservedNode(step, index) {

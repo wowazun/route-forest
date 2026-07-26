@@ -52,10 +52,13 @@ function observation(overrides = {}) {
 }
 
 test("reads an anonymized route observation at the system boundary", () => {
-  const route = readRouteObservation(observation());
+  const input = observation();
+  input.steps[0].nodes[0].treeVisitCount = 3;
+  const route = readRouteObservation(input);
 
   assert.equal(route.schemaVersion, 2);
   assert.equal(route.steps[0].nodes[0].nodeId, "node-1");
+  assert.equal(route.steps[0].nodes[0].treeVisitCount, 3);
   assert.equal(route.steps[2].nodes[0].reachedTarget, true);
   assert.equal(Object.isFrozen(route), true);
   assert.equal(JSON.stringify(route).includes("rttsMs"), false);

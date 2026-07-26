@@ -196,6 +196,49 @@ test("publishes completed observations and replays only anonymized data", async 
   assert.deepEqual(service.getRecentObservations(), received);
 });
 
+test("assigns cumulative tree visit counts to anonymous route nodes", async () => {
+  const service = createService({
+    run: async () => ({
+      stdout: "1  8.8.8.8  1.0 ms",
+      stderr: "",
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+    }),
+  });
+
+  const first = service.submit({
+    clientIp: normalizeIpAddress("1.1.1.1"),
+    website: "example.com",
+    consentAccepted: true,
+    consentVersion: "v1",
+  });
+  const firstCompleted = await eventually(() => {
+    const record = service.get(first.measurementId);
+    return record?.status === "completed" ? record : null;
+  });
+
+  const second = service.submit({
+    clientIp: normalizeIpAddress("9.9.9.9"),
+    website: "example.com",
+    consentAccepted: true,
+    consentVersion: "v1",
+  });
+  const secondCompleted = await eventually(() => {
+    const record = service.get(second.measurementId);
+    return record?.status === "completed" ? record : null;
+  });
+
+  assert.equal(
+    firstCompleted.observation.steps[0].nodes[0].treeVisitCount,
+    1,
+  );
+  assert.equal(
+    secondCompleted.observation.steps[0].nodes[0].treeVisitCount,
+    2,
+  );
+});
+
 test("classifies worker failures as system failures rather than unknown segments", async () => {
   const service = createService({
     run: async () => {

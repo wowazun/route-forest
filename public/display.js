@@ -40,6 +40,7 @@ import {
   drawFeatherArt,
   featherPoseAt,
 } from "./feather-art.js?v=2";
+import { treeDisplaySizeForCount } from "./tree-art.js?v=2";
 import { createSimulation } from "./simulator-scenarios.js";
 import { visualStyle } from "./visual-style.js";
 
@@ -359,9 +360,16 @@ function treePoint(tree) {
   };
 }
 
-function addTreeMemory(tree, amount = 1, immediate = false) {
-  tree.count += amount;
-  tree.targetSize = Math.min(58, 17 + Math.log2(tree.count + 1) * 8);
+function addTreeMemory(
+  tree,
+  amount = 1,
+  immediate = false,
+  synchronizedCount = null,
+) {
+  tree.count = Number.isInteger(synchronizedCount)
+    ? Math.max(tree.count, synchronizedCount)
+    : tree.count + amount;
+  tree.targetSize = treeDisplaySizeForCount(tree.count);
   if (immediate) tree.size = tree.targetSize;
   state.treeLayerDirty = true;
   state.windIndexDirty = true;
@@ -369,16 +377,23 @@ function addTreeMemory(tree, amount = 1, immediate = false) {
 
 function buildRoute(sequence, immediate = false, controller = null) {
   const waypoints = [];
-  const allTrees = [];
+  const treeGrowthEvents = [];
 
   for (const step of sequence.waypoints) {
     if (step.kind === "tree") {
       const stepTrees = step.nodes.map(ensureTree);
-      allTrees.push(...stepTrees);
+      const treeVisitCounts = step.nodes.map((node) => node.treeVisitCount);
+      stepTrees.forEach((tree, index) => {
+        treeGrowthEvents.push({
+          tree,
+          treeVisitCount: treeVisitCounts[index],
+        });
+      });
       waypoints.push({
         kind: "tree",
         tree: stepTrees[0],
         stepTrees,
+        treeVisitCounts,
       });
     } else if (step.kind === "fog") {
       waypoints.push({
@@ -389,7 +404,9 @@ function buildRoute(sequence, immediate = false, controller = null) {
   }
 
   if (immediate) {
-    for (const tree of allTrees) addTreeMemory(tree, 1, true);
+    for (const event of treeGrowthEvents) {
+      addTreeMemory(event.tree, 1, true, event.treeVisitCount);
+    }
   }
 
   if (waypoints.length === 0) return;
@@ -516,7 +533,14 @@ function flightPosition(
   };
 }
 
-function dropSeed(tree, now, flightId, waypointIndex, bird) {
+function dropSeed(
+  tree,
+  now,
+  flightId,
+  waypointIndex,
+  bird,
+  treeVisitCount = null,
+) {
   const target = treePoint(tree);
   const release = birdWorldAnchor({
     x: bird.x,
@@ -532,6 +556,7 @@ function dropSeed(tree, now, flightId, waypointIndex, bird) {
     bornAt: now,
     life: prefersReducedMotion ? 120 : visualStyle.motion.seedDropMs,
     phase: (hashText(tree.nodeId) % 628) / 100,
+    treeVisitCount,
     applied: false,
   });
 }
@@ -699,8 +724,19 @@ function updateFlights(now) {
       if (!point) continue;
       if (point.source.kind === "tree" && !flight.visited.has(index)) {
         flight.visited.add(index);
-        for (const tree of point.source.stepTrees) {
-          dropSeed(tree, now, flight.id, index, bird);
+        for (
+          let treeIndex = 0;
+          treeIndex < point.source.stepTrees.length;
+          treeIndex += 1
+        ) {
+          dropSeed(
+            point.source.stepTrees[treeIndex],
+            now,
+            flight.id,
+            index,
+            bird,
+            point.source.treeVisitCounts?.[treeIndex],
+          );
         }
       }
     }
@@ -750,7 +786,7 @@ function updateEffects(now, deltaSeconds) {
     const progress = lifecycleProgress(now, seed.bornAt, seed.life);
     if (progress >= 1 && !seed.applied) {
       seed.applied = true;
-      addTreeMemory(seed.tree);
+      addTreeMemory(seed.tree, 1, false, seed.treeVisitCount);
     }
   }
   state.seeds = state.seeds.filter(

@@ -625,6 +625,8 @@ h2 {
   position: relative;
   width: 30px;
   height: 44px;
+  transform: scale(var(--tree-scale, 1));
+  transform-origin: center bottom;
 }
 
 .tree-crown {
