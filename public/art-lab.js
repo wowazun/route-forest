@@ -38,7 +38,7 @@ import {
 import {
   drawRouteLightFlow,
   ROUTE_ART_VERSION,
-} from "./route-art.js?v=3";
+} from "./route-art.js?v=4";
 import { visualStyle } from "./visual-style.js?v=2";
 
 const proofs = document.querySelector("#proofs");
@@ -167,6 +167,7 @@ const routeCount = document.querySelector("#route-count");
 const routeSpeed = document.querySelector("#route-speed");
 const routeSize = document.querySelector("#route-size");
 const routeBrightness = document.querySelector("#route-brightness");
+const routeHaze = document.querySelector("#route-haze");
 const routeTail = document.querySelector("#route-tail");
 const routeTrailWidth = document.querySelector("#route-trail-width");
 const routeTrailLife = document.querySelector("#route-trail-life");
@@ -180,6 +181,7 @@ const routeOutputs = {
   speed: document.querySelector("#route-speed-output"),
   size: document.querySelector("#route-size-output"),
   brightness: document.querySelector("#route-brightness-output"),
+  haze: document.querySelector("#route-haze-output"),
   tail: document.querySelector("#route-tail-output"),
   trailWidth: document.querySelector("#route-trail-width-output"),
   trailLife: document.querySelector("#route-trail-life-output"),
@@ -410,6 +412,7 @@ function updateRouteControlOutputs(
   routeOutputs.speed.textContent = `${routeSpeed.value}%`;
   routeOutputs.size.textContent = `${routeSize.value}%`;
   routeOutputs.brightness.textContent = `${routeBrightness.value}%`;
+  routeOutputs.haze.textContent = `${routeHaze.value}%`;
   routeOutputs.tail.textContent = `${routeTail.value}%`;
   routeOutputs.trailWidth.textContent = `${routeTrailWidth.value}%`;
   routeOutputs.trailLife.textContent = `${routeTrailLife.value}%`;
@@ -1891,6 +1894,7 @@ function drawRouteWorkbench(proof, time) {
         lightCount: Number(routeCount.value),
         lightSize: Number(routeSize.value) / 100,
         brightness: Number(routeBrightness.value) / 100,
+        hazeStrength: Number(routeHaze.value) / 100,
         tailLength: 0.085 * (Number(routeTail.value) / 100),
         trailWidth: Number(routeTrailWidth.value) / 100,
         trailPersistence: Number(routeTrailLife.value) / 100,
@@ -2253,6 +2257,7 @@ for (const control of [
   routeSpeed,
   routeSize,
   routeBrightness,
+  routeHaze,
   routeTail,
   routeTrailWidth,
   routeTrailLife,
@@ -2459,6 +2464,7 @@ window.__routeForestArtLab = Object.freeze({
       speed: Number(routeSpeed.value),
       lightSize: Number(routeSize.value),
       brightness: Number(routeBrightness.value),
+      hazeStrength: Number(routeHaze.value),
       tailLength: Number(routeTail.value),
       trailWidth: Number(routeTrailWidth.value),
       trailPersistence: Number(routeTrailLife.value),

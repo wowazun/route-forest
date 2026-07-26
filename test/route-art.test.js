@@ -14,6 +14,8 @@ test("keeps the production light swarm bright with a short visible afterimage", 
   assert.equal(DEFAULT_ROUTE_LIGHT_STYLE.tailLength, 0.13);
   assert.equal(DEFAULT_ROUTE_LIGHT_STYLE.trailPersistence, 0.72);
   assert.equal(DEFAULT_ROUTE_LIGHT_STYLE.afterglowSegments, 2);
+  assert.equal(DEFAULT_ROUTE_LIGHT_STYLE.hazeStrength, 0.82);
+  assert.equal(DEFAULT_ROUTE_LIGHT_STYLE.hazeSize, 1.15);
 });
 
 function treePoint(x, y, nodeId, size = 64) {

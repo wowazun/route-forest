@@ -10,7 +10,7 @@ import {
 import {
   drawRouteLightFlow,
   ROUTE_ART_VERSION,
-} from "./route-art.js?v=3";
+} from "./route-art.js?v=4";
 
 function hashText(value) {
   let hash = 2166136261;

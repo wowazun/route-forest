@@ -1,6 +1,6 @@
 const TAU = Math.PI * 2;
 
-export const ROUTE_ART_VERSION = "route-light-flow-v3";
+export const ROUTE_ART_VERSION = "route-light-flow-v4";
 
 export const DEFAULT_ROUTE_LIGHT_STYLE = Object.freeze({
   mode: "complete",
@@ -11,6 +11,8 @@ export const DEFAULT_ROUTE_LIGHT_STYLE = Object.freeze({
   trailWidth: 1.12,
   trailPersistence: 0.72,
   afterglowSegments: 2,
+  hazeStrength: 0.82,
+  hazeSize: 1.15,
   trailBreakup: 0.42,
   curveWander: 1,
   treeReaction: 0.72,
@@ -359,10 +361,65 @@ function drawLightParticle(
     alpha,
     tailLength,
     offset,
+    hazeStrength,
+    hazeSize,
   },
 ) {
   const head = sampleRouteLightPath(path, progress, offset);
   const tailStart = Math.max(0, progress - tailLength);
+  const hazeRandom = randomFrom(seed ^ 0x85ebca6b);
+  if (hazeStrength > 0) {
+    const hazePoints = [
+      {
+        point: sampleRouteLightPath(
+          path,
+          Math.max(0, progress - tailLength * 0.18),
+          offset * 0.88,
+        ),
+        length: 7.2,
+        width: 2.8,
+        alpha: 0.14,
+      },
+      {
+        point: sampleRouteLightPath(
+          path,
+          Math.max(0, progress - tailLength * 0.58),
+          offset * 0.62,
+        ),
+        length: 5.4,
+        width: 2.15,
+        alpha: 0.08,
+      },
+    ];
+    context.save();
+    context.globalCompositeOperation = "screen";
+    for (const haze of hazePoints) {
+      context.save();
+      context.translate(haze.point.x, haze.point.y);
+      context.rotate(
+        haze.point.angle + (hazeRandom() - 0.5) * 0.22,
+      );
+      context.shadowColor = rgba(color, alpha * hazeStrength * 0.72);
+      context.shadowBlur = size * hazeSize * 11;
+      context.fillStyle = rgba(
+        color,
+        alpha * hazeStrength * haze.alpha,
+      );
+      context.beginPath();
+      context.ellipse(
+        0,
+        0,
+        size * hazeSize * haze.length,
+        size * hazeSize * haze.width,
+        0,
+        0,
+        TAU,
+      );
+      context.fill();
+      context.restore();
+    }
+    context.restore();
+  }
   const tailPieces = 5;
   for (let index = 0; index < tailPieces; index += 1) {
     const pieceStart =
@@ -686,6 +743,31 @@ export function drawRouteLightFlow(
                 (local - 0.86) /
                   (0.34 + afterglowSegments),
             );
+      if (settings.hazeStrength > 0) {
+        context.save();
+        context.globalCompositeOperation = "screen";
+        context.shadowColor = rgba(
+          settings.color,
+          settings.brightness * settings.hazeStrength * 0.42,
+        );
+        context.shadowBlur = 18 * settings.hazeSize;
+        strokePathRange(context, segment.path, trailStart, flow, {
+          width:
+            4.6 *
+            settings.trailWidth *
+            settings.hazeSize,
+          alpha:
+            settings.brightness *
+            settings.hazeStrength *
+            0.13 *
+            trailFade,
+          color: settings.color,
+          breakup: Math.min(0.82, settings.trailBreakup + 0.22),
+          seed: segment.path.seed ^ 0x9e3779b1,
+          pieces: 18,
+        });
+        context.restore();
+      }
       strokePathRange(context, segment.path, trailStart, flow, {
         width: 1.55 * settings.trailWidth,
         alpha: settings.brightness * 0.46 * trailFade,
@@ -726,6 +808,8 @@ export function drawRouteLightFlow(
         tailLength:
           settings.tailLength * (0.7 + random() * 0.62),
         offset: baseOffset + (random() - 0.5) * scatter,
+        hazeStrength: settings.hazeStrength,
+        hazeSize: settings.hazeSize,
       });
     }
 
