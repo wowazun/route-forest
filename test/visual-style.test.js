@@ -28,7 +28,7 @@ test("keeps causal motions faster than lingering memories", () => {
 });
 
 test("keeps the production bird at the slower exhibition speed", () => {
-  assert.equal(visualStyle.motion.birdFlightSpeedPxPerSecond, 100);
+  assert.equal(visualStyle.motion.birdFlightSpeedPxPerSecond, 160);
 });
 
 test("covers every replaceable art asset with an anchor and state", () => {
