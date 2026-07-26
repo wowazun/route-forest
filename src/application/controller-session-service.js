@@ -181,6 +181,31 @@ export class ControllerSessionService {
     );
   }
 
+  getResetSummary() {
+    this.#expireSessions();
+    let active = 0;
+    for (const session of this.#sessions.values()) {
+      if (!session.ended) active += 1;
+    }
+    return Object.freeze({
+      activeSessions: active,
+      retainedSessions: this.#sessions.size,
+    });
+  }
+
+  resetAll() {
+    const before = this.getResetSummary();
+    for (const session of this.#sessions.values()) {
+      if (!session.ended) this.#endSession(session, "exhibition-reset");
+      if (session.disconnectTimer) {
+        this.#cancelSchedule(session.disconnectTimer);
+        session.disconnectTimer = null;
+      }
+    }
+    this.#sessions.clear();
+    return before;
+  }
+
   input(sessionId, token, { x, y, sequence }) {
     const session = this.#authenticate(sessionId, token);
     const status = this.#publicStatus(session);

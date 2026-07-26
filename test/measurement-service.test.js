@@ -352,3 +352,89 @@ test("enforces the finite total queue capacity", () => {
     { code: "queue_full" },
   );
 });
+
+test("resets completed observations, tree growth, and participant cooldowns", async () => {
+  const service = createService({
+    run: async () => ({
+      stdout: "1  8.8.8.8  1.0 ms",
+      stderr: "",
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+    }),
+  });
+  const clientIp = normalizeIpAddress("8.8.8.8");
+  const events = [];
+  service.subscribe((event) => events.push(event));
+  const first = service.submit({
+    clientIp,
+    website: "example.com",
+    consentAccepted: true,
+    consentVersion: "v1",
+  });
+  await eventually(() => service.get(first.measurementId)?.status === "completed");
+
+  const before = service.getResetSummary();
+  assert.equal(before.records, 1);
+  assert.equal(before.recentObservations, 1);
+  assert.equal(before.treeNodes, 1);
+  assert.equal(before.participantCooldowns, 1);
+
+  const reset = service.reset();
+  assert.equal(reset.before.records, 1);
+  assert.equal(service.get(first.measurementId), null);
+  assert.deepEqual(service.getRecentObservations(), []);
+  assert.deepEqual(service.getResetSummary().statuses, {
+    queued: 0,
+    running: 0,
+    completed: 0,
+    failed: 0,
+  });
+  assert.equal(events.at(-1).type, "exhibition-reset");
+
+  assert.doesNotThrow(() =>
+    service.submit({
+      clientIp,
+      website: "example.com",
+      consentAccepted: true,
+      consentVersion: "v1",
+    }),
+  );
+});
+
+test("ignores a traceroute result that finishes after an exhibition reset", async () => {
+  let finishRun;
+  const service = createService({
+    run: () =>
+      new Promise((resolve) => {
+        finishRun = resolve;
+      }),
+  });
+  const events = [];
+  service.subscribe((event) => events.push(event));
+  const queued = service.submit({
+    clientIp: normalizeIpAddress("8.8.4.4"),
+    website: "example.com",
+    consentAccepted: true,
+    consentVersion: "v1",
+  });
+  await eventually(() => service.get(queued.measurementId)?.status === "running");
+
+  service.reset();
+  finishRun({
+    stdout: "1  8.8.8.8  1.0 ms",
+    stderr: "",
+    exitCode: 0,
+    signal: null,
+    timedOut: false,
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  assert.equal(service.get(queued.measurementId), null);
+  assert.deepEqual(service.getRecentObservations(), []);
+  assert.equal(
+    events.filter((event) => event.type === "route-observed").length,
+    0,
+  );
+  assert.equal(events.at(-1).type, "exhibition-reset");
+});

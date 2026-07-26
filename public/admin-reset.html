@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b252c" />
+    <meta
+      name="description"
+      content="渡り路の展示データを安全に初期化する管理画面。"
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/admin-reset.css?v=1" />
+    <title>展示データの初期化 — 渡り路</title>
+  </head>
+  <body>
+    <main class="reset-console">
+      <header class="reset-heading">
+        <p class="work-title">渡り路 / MAINTENANCE</p>
+        <h1>展示データの初期化</h1>
+        <p>
+          これまでの経路、育った木、参加中の紙飛行機を消し、
+          展示画面を開始前の状態へ戻します。
+        </p>
+      </header>
+
+      <section class="reset-step" aria-labelledby="authorize-title">
+        <p class="step-number">01 / 認証</p>
+        <h2 id="authorize-title">管理トークンを入力</h2>
+        <label for="admin-token">管理トークン</label>
+        <input
+          id="admin-token"
+          type="password"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+        />
+        <p class="field-note">
+          トークンはブラウザへ保存されません。
+        </p>
+        <button id="issue-challenge" type="button">
+          削除対象を確認する
+        </button>
+      </section>
+
+      <section
+        id="confirmation-step"
+        class="reset-step is-danger"
+        aria-labelledby="confirmation-title"
+        hidden
+      >
+        <p class="step-number">02 / 最終確認</p>
+        <h2 id="confirmation-title">消える内容を確認</h2>
+        <dl class="reset-summary">
+          <div>
+            <dt>通信記録</dt>
+            <dd id="summary-records">0</dd>
+          </div>
+          <div>
+            <dt>木の記録</dt>
+            <dd id="summary-trees">0</dd>
+          </div>
+          <div>
+            <dt>参加セッション</dt>
+            <dd id="summary-sessions">0</dd>
+          </div>
+          <div>
+            <dt>処理中・待機中</dt>
+            <dd id="summary-queue">0</dd>
+          </div>
+        </dl>
+
+        <p class="warning">
+          この操作は取り消せません。確認コードは一回限りで、
+          <time id="challenge-expiry"></time>まで有効です。
+        </p>
+
+        <label class="confirmation-check">
+          <input id="impact-confirmation" type="checkbox" />
+          <span>
+            大型画面を空にし、参加中のスマートフォン操作も終了することを確認しました
+          </span>
+        </label>
+
+        <label for="confirmation-input">
+          次の文をそのまま入力してください
+        </label>
+        <code id="confirmation-text"></code>
+        <input
+          id="confirmation-input"
+          type="text"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+        />
+
+        <button id="execute-reset" class="danger-action" type="button" disabled>
+          展示データを初期化する
+        </button>
+      </section>
+
+      <p id="reset-status" class="reset-status" aria-live="polite">
+        まだ何も変更されていません。
+      </p>
+    </main>
+    <script type="module" src="/admin-reset.js?v=1"></script>
+  </body>
+</html>

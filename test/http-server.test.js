@@ -4,9 +4,11 @@ import test from "node:test";
 import { MeasurementService } from "../src/application/measurement-service.js";
 import { ControllerSessionService } from "../src/application/controller-session-service.js";
 import { NodeAnonymizer } from "../src/domain/anonymizer.js";
+import { normalizeIpAddress } from "../src/domain/ip-address.js";
 import { createHttpServer } from "../src/http/server.js";
 
 const PUBLIC_ORIGIN = "https://route.example.com";
+const ADMIN_RESET_TOKEN = "r".repeat(43);
 
 async function withServer(run) {
   const service = new MeasurementService({
@@ -84,6 +86,57 @@ async function withReadyControllerServer(run) {
   const { port } = server.address();
   try {
     await run(`http://127.0.0.1:${port}`);
+  } finally {
+    server.closeAllConnections();
+    server.close();
+    await once(server, "close");
+  }
+}
+
+async function withAdminResetServer(run) {
+  const service = new MeasurementService({
+    anonymizer: new NodeAnonymizer("admin-reset-test-secret-is-long-enough"),
+    resolver: {
+      resolve: async () => normalizeIpAddress("8.8.8.8"),
+    },
+    runner: {
+      run: async () => ({
+        stdout: "1  8.8.8.8  1.0 ms",
+        stderr: "",
+        exitCode: 0,
+        signal: null,
+        timedOut: false,
+      }),
+    },
+    config: {
+      concurrency: 1,
+      queueCapacity: 4,
+      cooldownMs: 60_000,
+      recordTtlMs: 900_000,
+      consentVersion: "v1",
+      tracerouteMethods: ["icmp"],
+    },
+  });
+  const controllerService = new ControllerSessionService({
+    recordProvider: (measurementId) => service.get(measurementId),
+  });
+  const server = createHttpServer({
+    measurementService: service,
+    controllerService,
+    config: {
+      publicOrigin: PUBLIC_ORIGIN,
+      adminResetToken: ADMIN_RESET_TOKEN,
+    },
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const { port } = server.address();
+  try {
+    await run(
+      `http://127.0.0.1:${port}`,
+      service,
+      controllerService,
+    );
   } finally {
     server.closeAllConnections();
     server.close();
@@ -506,5 +559,150 @@ test("rejects a missing trusted header and a cross-origin request", async () => 
       }),
     });
     assert.equal(crossOrigin.status, 403);
+  });
+});
+
+test("serves a guarded administrative reset console", async () => {
+  await withAdminResetServer(async (baseUrl) => {
+    const page = await fetch(`${baseUrl}/admin/reset`);
+    assert.equal(page.status, 200);
+    const html = await page.text();
+    assert.match(html, /展示データの初期化/);
+    assert.match(html, /id="impact-confirmation"/);
+    assert.match(html, /id="confirmation-input"/);
+
+    const script = await fetch(`${baseUrl}/admin-reset.js`);
+    assert.equal(script.status, 200);
+    assert.match(await script.text(), /window\.confirm/);
+
+    const stylesheet = await fetch(`${baseUrl}/admin-reset.css`);
+    assert.equal(stylesheet.status, 200);
+
+    const unauthorized = await fetch(
+      `${baseUrl}/api/admin/reset/challenge`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: PUBLIC_ORIGIN,
+        },
+        body: "{}",
+      },
+    );
+    assert.equal(unauthorized.status, 401);
+    assert.equal(
+      (await unauthorized.json()).error.code,
+      "admin_unauthorized",
+    );
+  });
+});
+
+test("requires a one-time exact confirmation before resetting the exhibition", async () => {
+  await withAdminResetServer(
+    async (baseUrl, service, controllerService) => {
+      const record = service.submit({
+        clientIp: normalizeIpAddress("8.8.4.4"),
+        website: "example.com",
+        consentAccepted: true,
+        consentVersion: "v1",
+      });
+      controllerService.create(record.measurementId);
+      const events = [];
+      service.subscribe((event) => events.push(event));
+
+      const challengeResponse = await fetch(
+        `${baseUrl}/api/admin/reset/challenge`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${ADMIN_RESET_TOKEN}`,
+            "content-type": "application/json",
+            origin: PUBLIC_ORIGIN,
+          },
+          body: "{}",
+        },
+      );
+      assert.equal(challengeResponse.status, 200);
+      const challenge = await challengeResponse.json();
+      assert.equal(challenge.summary.measurements.records, 1);
+      assert.equal(challenge.summary.controllers.activeSessions, 1);
+      assert.match(
+        challenge.confirmation,
+        /^渡り路をまっさらにする [0-9A-F]{6}$/,
+      );
+
+      const resetResponse = await fetch(`${baseUrl}/api/admin/reset`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${ADMIN_RESET_TOKEN}`,
+          "content-type": "application/json",
+          origin: PUBLIC_ORIGIN,
+        },
+        body: JSON.stringify({
+          challengeId: challenge.challengeId,
+          confirmation: challenge.confirmation,
+        }),
+      });
+      assert.equal(resetResponse.status, 200);
+      assert.equal((await resetResponse.json()).reset, true);
+      assert.equal(service.getResetSummary().records, 0);
+      assert.equal(controllerService.getResetSummary().activeSessions, 0);
+      assert.equal(events.at(-1).type, "exhibition-reset");
+
+      const replay = await fetch(`${baseUrl}/api/admin/reset`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${ADMIN_RESET_TOKEN}`,
+          "content-type": "application/json",
+          origin: PUBLIC_ORIGIN,
+        },
+        body: JSON.stringify({
+          challengeId: challenge.challengeId,
+          confirmation: challenge.confirmation,
+        }),
+      });
+      assert.equal(replay.status, 409);
+      assert.equal(
+        (await replay.json()).error.code,
+        "reset_challenge_expired",
+      );
+    },
+  );
+});
+
+test("consumes a reset challenge when the confirmation text is wrong", async () => {
+  await withAdminResetServer(async (baseUrl, service) => {
+    service.submit({
+      clientIp: normalizeIpAddress("1.1.1.1"),
+      website: "example.com",
+      consentAccepted: true,
+      consentVersion: "v1",
+    });
+    const headers = {
+      authorization: `Bearer ${ADMIN_RESET_TOKEN}`,
+      "content-type": "application/json",
+      origin: PUBLIC_ORIGIN,
+    };
+    const challenge = await (
+      await fetch(`${baseUrl}/api/admin/reset/challenge`, {
+        method: "POST",
+        headers,
+        body: "{}",
+      })
+    ).json();
+    const response = await fetch(`${baseUrl}/api/admin/reset`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        challengeId: challenge.challengeId,
+        confirmation: "渡り路をまっさらにする WRONG",
+      }),
+    });
+    assert.equal(response.status, 409);
+    assert.equal(
+      (await response.json()).error.code,
+      "reset_confirmation_mismatch",
+    );
+    assert.equal(service.getResetSummary().records, 1);
   });
 });

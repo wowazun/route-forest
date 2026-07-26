@@ -181,3 +181,41 @@ test("assigns distinct colors to concurrent phone sessions", () => {
   const second = service.create("measurement-second");
   assert.notEqual(first.color, second.color);
 });
+
+test("ends and removes every controller session during an exhibition reset", () => {
+  const now = new Date("2026-07-26T00:00:00.000Z");
+  const sessionIds = [
+    "66666666-6666-4666-8666-666666666666",
+    "77777777-7777-4777-8777-777777777777",
+  ];
+  const events = [];
+  const service = new ControllerSessionService({
+    recordProvider: () => completedRecord(now.toISOString()),
+    clock: () => now,
+    tokenFactory: () => "f".repeat(43),
+    uuidFactory: () => sessionIds.shift(),
+  });
+  service.subscribe((event) => events.push(event));
+  const first = service.create("measurement-first");
+  service.create("measurement-second");
+
+  assert.deepEqual(service.getResetSummary(), {
+    activeSessions: 2,
+    retainedSessions: 2,
+  });
+  const cleared = service.resetAll();
+  assert.equal(cleared.activeSessions, 2);
+  assert.deepEqual(service.activeAppearances(), []);
+  assert.throws(
+    () => service.status(first.sessionId, first.token),
+    (error) => error.code === "controller_unauthorized",
+  );
+  assert.equal(
+    events.filter(
+      (event) =>
+        event.type === "controller-ended" &&
+        event.reason === "exhibition-reset",
+    ).length,
+    2,
+  );
+});

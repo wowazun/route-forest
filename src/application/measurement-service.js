@@ -23,6 +23,7 @@ export class MeasurementService {
   #anonymizer;
   #clock;
   #config;
+  #generation = 0;
   #lastSubmissionByParticipant = new Map();
   #queue;
   #recentObservations = [];
@@ -57,6 +58,57 @@ export class MeasurementService {
   getRecentObservations() {
     this.#expireOldRecords();
     return structuredClone(this.#recentObservations);
+  }
+
+  getResetSummary() {
+    this.#expireOldRecords();
+    const statuses = {
+      queued: 0,
+      running: 0,
+      completed: 0,
+      failed: 0,
+    };
+    for (const record of this.#records.values()) {
+      if (record.status in statuses) statuses[record.status] += 1;
+    }
+    return Object.freeze({
+      records: this.#records.size,
+      recentObservations: this.#recentObservations.length,
+      treeNodes: this.#treeVisitsByNode.size,
+      participantCooldowns: this.#lastSubmissionByParticipant.size,
+      queue: this.#queue.state,
+      statuses: Object.freeze(statuses),
+    });
+  }
+
+  reset() {
+    const before = this.getResetSummary();
+    this.#generation += 1;
+    const cancelledWaiting = this.#queue.cancelWaiting();
+    this.#records.clear();
+    this.#recentObservations.length = 0;
+    this.#treeVisitsByNode.clear();
+    this.#lastSubmissionByParticipant.clear();
+
+    const event = Object.freeze({
+      schemaVersion: 1,
+      type: "exhibition-reset",
+      resetId: randomUUID(),
+      occurredAt: this.#clock().toISOString(),
+    });
+    for (const listener of this.#subscribers) {
+      try {
+        listener(structuredClone(event));
+      } catch {
+        // A disconnected display must never fail an administrative reset.
+      }
+    }
+    return Object.freeze({
+      resetId: event.resetId,
+      occurredAt: event.occurredAt,
+      cancelledWaiting,
+      before,
+    });
   }
 
   subscribe(listener) {
@@ -114,8 +166,9 @@ export class MeasurementService {
     };
 
     const job = { destination };
+    const generation = this.#generation;
     this.#queue.enqueue(async () => {
-      await this.#execute(measurementId, job);
+      await this.#execute(measurementId, job, generation);
     });
 
     this.#records.set(measurementId, record);
@@ -129,9 +182,9 @@ export class MeasurementService {
     return record ? publicRecord(record) : null;
   }
 
-  async #execute(measurementId, job) {
+  async #execute(measurementId, job, generation) {
     const record = this.#records.get(measurementId);
-    if (!record) {
+    if (!record || generation !== this.#generation) {
       job.target = undefined;
       return;
     }
@@ -172,6 +225,13 @@ export class MeasurementService {
         ),
       );
 
+      if (
+        generation !== this.#generation ||
+        !this.#records.has(measurementId)
+      ) {
+        return;
+      }
+
       let kind = "command_error";
       if (result.timedOut) kind = hops.length > 0 ? "partial_timeout" : "timeout";
       else if (reachedTarget) kind = "destination_reached";
@@ -204,6 +264,12 @@ export class MeasurementService {
         this.#publishObservation(record.observation);
       }
     } catch (error) {
+      if (
+        generation !== this.#generation ||
+        !this.#records.has(measurementId)
+      ) {
+        return;
+      }
       record.status = "failed";
       record.failure = Object.freeze({
         code: error?.code || "worker_error",
@@ -214,7 +280,12 @@ export class MeasurementService {
     } finally {
       target = undefined;
       job.destination = undefined;
-      record.updatedAt = this.#clock().toISOString();
+      if (
+        generation === this.#generation &&
+        this.#records.has(measurementId)
+      ) {
+        record.updatedAt = this.#clock().toISOString();
+      }
     }
   }
 

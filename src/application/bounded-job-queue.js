@@ -33,6 +33,12 @@ export class BoundedJobQueue {
     this.#drain();
   }
 
+  cancelWaiting() {
+    const cancelled = this.#waiting.length;
+    this.#waiting.length = 0;
+    return cancelled;
+  }
+
   #drain() {
     while (this.#active < this.#concurrency && this.#waiting.length > 0) {
       const execute = this.#waiting.shift();

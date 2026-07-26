@@ -1,0 +1,248 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    "BIZ UDPGothic", "Hiragino Kaku Gothic ProN", "Yu Gothic",
+    "Meiryo", sans-serif;
+  color: #dbe8e8;
+  background: #081f25;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    linear-gradient(90deg, rgba(213, 162, 75, 0.05), transparent 28%),
+    #081f25;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.reset-console {
+  width: min(720px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 72px 0 96px;
+}
+
+.reset-heading {
+  padding: 0 0 32px 24px;
+  border-left: 2px solid #d5a24b;
+}
+
+.work-title,
+.step-number {
+  margin: 0 0 12px;
+  color: #d5a24b;
+  font: 600 0.72rem/1.4 "SFMono-Regular", Consolas, monospace;
+  letter-spacing: 0.14em;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 16px;
+  font-family:
+    "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-size: clamp(2rem, 7vw, 4.2rem);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  margin-bottom: 24px;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.reset-heading > p:last-child {
+  max-width: 38rem;
+  margin-bottom: 0;
+  color: #9eb7b8;
+  line-height: 1.85;
+}
+
+.reset-step {
+  margin-top: 32px;
+  padding: 28px 28px 30px;
+  border: 1px solid rgba(157, 187, 192, 0.22);
+  background: rgba(13, 45, 52, 0.7);
+}
+
+.reset-step.is-danger {
+  border-color: rgba(199, 121, 104, 0.52);
+}
+
+label:not(.confirmation-check) {
+  display: block;
+  margin-bottom: 9px;
+  color: #afc7c8;
+  font-size: 0.86rem;
+}
+
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid rgba(157, 187, 192, 0.38);
+  outline: 0;
+  color: #eef4f3;
+  background: rgba(4, 22, 27, 0.75);
+}
+
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid #d5a24b;
+  outline-offset: 3px;
+}
+
+.field-note,
+.warning {
+  margin: 9px 0 20px;
+  color: #829fa1;
+  font-size: 0.78rem;
+  line-height: 1.7;
+}
+
+.warning {
+  color: #d7b3aa;
+}
+
+button {
+  min-height: 46px;
+  padding: 10px 18px;
+  border: 1px solid rgba(213, 162, 75, 0.72);
+  color: #e6c889;
+  background: transparent;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: rgba(213, 162, 75, 0.1);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.reset-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 0 0 22px;
+  border-top: 1px solid rgba(157, 187, 192, 0.18);
+  border-bottom: 1px solid rgba(157, 187, 192, 0.18);
+}
+
+.reset-summary div {
+  padding: 17px 12px;
+  border-right: 1px solid rgba(157, 187, 192, 0.18);
+}
+
+.reset-summary div:last-child {
+  border-right: 0;
+}
+
+.reset-summary dt {
+  color: #87a5a7;
+  font-size: 0.7rem;
+}
+
+.reset-summary dd {
+  margin: 8px 0 0;
+  font: 500 1.65rem/1 "SFMono-Regular", Consolas, monospace;
+}
+
+.confirmation-check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 24px 0;
+  color: #c5d5d4;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.confirmation-check input {
+  width: 18px;
+  height: 18px;
+  margin: 3px 0 0;
+  accent-color: #c77968;
+}
+
+code {
+  display: block;
+  margin: 0 0 10px;
+  padding: 12px;
+  overflow-wrap: anywhere;
+  color: #e2b8ae;
+  background: rgba(199, 121, 104, 0.08);
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.danger-action {
+  width: 100%;
+  margin-top: 22px;
+  border-color: #c77968;
+  color: #e2b8ae;
+}
+
+.danger-action:hover:not(:disabled) {
+  background: rgba(199, 121, 104, 0.12);
+}
+
+.reset-status {
+  min-height: 1.5em;
+  margin: 22px 0 0;
+  color: #91acad;
+  font-size: 0.82rem;
+}
+
+.reset-status[data-state="error"] {
+  color: #e2a798;
+}
+
+.reset-status[data-state="success"] {
+  color: #d5c08f;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 620px) {
+  .reset-console {
+    width: min(100% - 24px, 720px);
+    padding: 40px 0 64px;
+  }
+
+  .reset-heading {
+    padding-left: 16px;
+  }
+
+  .reset-step {
+    padding: 22px 18px 24px;
+  }
+
+  .reset-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .reset-summary div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .reset-summary div:nth-child(-n + 2) {
+    border-bottom: 1px solid rgba(157, 187, 192, 0.18);
+  }
+}

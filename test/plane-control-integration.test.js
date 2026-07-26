@@ -106,12 +106,14 @@ test("connects the mobile controller and display through owned server events", a
   assert.match(display, /mote\.history\.length > 7/);
   assert.match(display, /context\.quadraticCurveTo\(/);
   assert.doesNotMatch(display, /mote\.x \* state\.width/);
-  assert.match(displayPage, /display\.js\?v=47/);
+  assert.match(displayPage, /display\.js\?v=48/);
   assert.match(display, /treeFieldSpread\(existing\.length\)/);
   assert.match(display, /if \(clearance >= 1\) return \{ nx, ny \}/);
   assert.match(display, /context\.scale\(calibration\.artScale/);
   assert.match(display, /--qr-scale/);
   assert.match(display, /route-forest-display-calibration-v1/);
+  assert.match(display, /function resetExhibitionState/);
+  assert.match(display, /source\.addEventListener\("exhibition-reset"/);
   assert.match(display, /segments: travelRouteSegments\(points\)/);
   assert.match(display, /life:\s*prefersReducedMotion[\s\S]*visualStyle\.motion\.routeHighlightMs/);
   assert.doesNotMatch(

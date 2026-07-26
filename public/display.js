@@ -445,6 +445,48 @@ function updateCounters() {
   routeCount.textContent = String(state.routesSeen);
 }
 
+function resetExhibitionState() {
+  for (const collection of [
+    state.pendingFlights,
+    state.flights,
+    state.fogs,
+    state.seeds,
+    state.feathers,
+    state.letters,
+    state.highlights,
+    state.planes,
+    state.motes,
+  ]) {
+    collection.length = 0;
+  }
+  for (const collection of [
+    state.trees,
+    state.seenMeasurements,
+    state.birdVisuals,
+    state.planeControls,
+    state.endedControllers,
+    state.routeRegistry,
+  ]) {
+    collection.clear();
+  }
+  state.routesSeen = 0;
+  state.windIndex = createTreeWindIndex();
+  state.windIndexDirty = true;
+  state.lastWindIndexAt = 0;
+  state.treeLayerDirty = true;
+  state.treeLayerCacheKey = "";
+  treeLayerContext.setTransform(1, 0, 0, 1, 0, 0);
+  treeLayerContext.clearRect(
+    0,
+    0,
+    treeLayerCanvas.width,
+    treeLayerCanvas.height,
+  );
+  destinationState.textContent = "DESTINATION / WAITING";
+  emptyMessage.classList.remove("has-routes");
+  updateCounters();
+}
+
 function waypointPositions(flight) {
   const resolved = [];
   for (let index = 0; index < flight.waypoints.length; index += 1) {
@@ -1588,6 +1630,9 @@ function connectLiveEvents() {
     } catch {
       setConnection("", "データを確認しています");
     }
+  });
+  source.addEventListener("exhibition-reset", () => {
+    resetExhibitionState();
   });
   source.addEventListener("plane-control", (event) => {
     try {
