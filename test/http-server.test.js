@@ -251,7 +251,10 @@ test("serves the participation page and assets with a restrictive CSP", async ()
     assert.equal(page.status, 200);
     assert.match(page.headers.get("content-type"), /^text\/html/);
     assert.match(page.headers.get("content-security-policy"), /default-src 'self'/);
-    assert.match(html, /このサイトへ鳥を送る/);
+    assert.match(html, /<title>情報の森<\/title>/);
+    assert.match(html, /鳥を送る/);
+    assert.match(html, /作品について/);
+    assert.doesNotMatch(html, /ROUTE OBSERVATION|TECHNICAL STUDY/);
 
     const stylesheet = await fetch(`${baseUrl}/styles.css`);
     assert.equal(stylesheet.status, 200);

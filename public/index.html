@@ -3,99 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#e7eef0" />
+    <meta name="theme-color" content="#071f25" />
     <meta
       name="description"
-      content="情報通信路を観測し、匿名化された経路として体験するインタラクティブ作品。"
+      content="情報の森へ参加し、届いた情報の紙飛行機を操作します。"
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/styles.css?v=5" />
-    <title>情報通信路 — Route Forest</title>
+    <link rel="stylesheet" href="/styles.css?v=6" />
+    <title>情報の森</title>
   </head>
   <body>
-    <div class="page-grain" aria-hidden="true"></div>
     <main class="app-shell">
       <header class="site-header">
-        <a class="wordmark" href="/" aria-label="情報通信路 ホーム">
-          <span class="wordmark-mark" aria-hidden="true"></span>
-          <span>情報通信路</span>
-        </a>
-        <p class="edition">ROUTE OBSERVATION / 01</p>
+        <a class="work-title" href="/">情報の森</a>
       </header>
 
-      <section class="hero" aria-labelledby="page-title">
-        <div class="observation-window" aria-hidden="true">
-          <span class="window-kanji">路</span>
-          <svg viewBox="0 0 260 260" role="presentation">
-            <circle class="scope-ring scope-ring-outer" cx="130" cy="130" r="108" />
-            <circle class="scope-ring scope-ring-inner" cx="130" cy="130" r="72" />
-            <path
-              class="scope-route"
-              d="M 12 163 C 54 163, 68 98, 111 108 S 163 185, 248 88"
-            />
-            <circle class="scope-node" cx="53" cy="142" r="5" />
-            <circle class="scope-node" cx="111" cy="108" r="5" />
-            <circle class="scope-node" cx="178" cy="157" r="5" />
-            <circle class="scope-probe" cx="12" cy="163" r="7" />
-          </svg>
-          <span class="window-label">OBSERVATION WINDOW</span>
-        </div>
+      <nav id="ui-preview-toolbar" class="ui-preview-toolbar" hidden>
+        <label for="ui-preview-state">UI確認</label>
+        <select id="ui-preview-state">
+          <option value="measuring">経路観測中</option>
+          <option value="carrying">鳥の飛行中</option>
+          <option value="fog">霧区間通過中</option>
+          <option value="opening">手紙変形中</option>
+          <option value="controllable">操作可能</option>
+          <option value="reconnecting">再接続中</option>
+          <option value="ended">セッション終了</option>
+          <option value="about">作品について</option>
+        </select>
+      </nav>
 
-        <div class="hero-copy">
-          <p class="eyebrow">ここから、あなたが選ぶWebサイトへ</p>
-          <h1 id="page-title">行き先を選び、<br />道をたどる。</h1>
-          <p class="hero-lead">
-            Webサイトを一つ選ぶと、会場のサーバーからそのサイト方向へ鳥が飛び、
-            その時点で観測できた情報通信路を作品へ送ります。
+      <section
+        id="intro-panel"
+        class="experience-panel intro-panel"
+        aria-labelledby="intro-title"
+      >
+        <div class="intro-copy">
+          <p class="state-label">鳥の行き先</p>
+          <h1 id="intro-title">たどるサイトを<br />一つ選んでください。</h1>
+          <p>
+            会場からそのサイトまで、今見える通信の経路を鳥がたどります。
           </p>
-        </div>
-      </section>
-
-      <section id="intro-panel" class="experience-panel" aria-labelledby="intro-title">
-        <div class="section-heading">
-          <p class="section-index">BEFORE DEPARTURE</p>
-          <h2 id="intro-title">観測の前に</h2>
-        </div>
-
-        <div class="fact-list">
-          <article class="fact">
-            <span class="fact-mark" aria-hidden="true">→</span>
-            <div>
-              <h3>会場からサイトへ向かう経路です</h3>
-              <p>
-                スマートフォンからの経路ではなく、会場のUbuntuサーバーから
-                選んだWebサイト方向へ向かう、その瞬間の応答可能な経路です。
-              </p>
-            </div>
-          </article>
-          <article class="fact">
-            <span class="fact-mark" aria-hidden="true">◇</span>
-            <div>
-              <h3>入力するのはWebサイトだけです</h3>
-              <p>
-                URLを貼った場合もドメイン名だけを使い、ページ内容へはアクセスしません。
-                ドメイン名は作品表示のため短時間保持しますが、解決したIPと
-                中継点の生のIPは保存・表示しません。
-              </p>
-            </div>
-          </article>
-          <article class="fact">
-            <span class="fact-mark" aria-hidden="true">≈</span>
-            <div>
-              <h3>見えない区間も通信の一部です</h3>
-              <p>
-                応答しない中継点は、通信失敗ではなく「こちらから観測できない区間」として扱います。
-              </p>
-            </div>
-          </article>
         </div>
 
         <form id="consent-form" class="consent-form" novalidate>
           <label class="destination-entry" for="website-input">
-            <span class="destination-label">
-              <span>DESTINATION</span>
-              <span>鳥の行き先</span>
-            </span>
+            <span>Webサイト</span>
             <span class="destination-control">
               <input
                 id="website-input"
@@ -109,10 +61,6 @@
                 placeholder="example.com"
                 required
               />
-              <span aria-hidden="true">↗</span>
-            </span>
-            <span class="destination-help">
-              ドメイン名またはWebサイトのURL。パス部分は使用しません。
             </span>
           </label>
 
@@ -120,102 +68,77 @@
             <input id="consent-checkbox" type="checkbox" required />
             <span class="check-shape" aria-hidden="true"></span>
             <span>
-              上の説明を読み、選んだWebサイトへの経路観測と、
-              接続元IPの匿名化した連続操作防止への利用に同意します。
+              選んだサイトへの経路観測と、接続元IPを匿名化して連続操作を防ぐことに同意します。
+              生の中継IPは保存・表示しません。
             </span>
           </label>
           <p id="form-message" class="form-message" aria-live="polite"></p>
           <button id="start-button" class="primary-action" type="submit">
-            <span>このサイトへ鳥を送る</span>
-            <span class="action-arrow" aria-hidden="true">→</span>
+            鳥を送る
           </button>
         </form>
       </section>
 
       <section
         id="measuring-panel"
-        class="experience-panel state-panel"
+        class="experience-panel state-panel measuring-panel"
         aria-labelledby="measuring-title"
         hidden
       >
-        <div class="section-heading">
-          <p class="section-index">IN TRANSIT</p>
-          <h2 id="measuring-title">経路を観測しています</h2>
+        <div class="state-orbit" aria-hidden="true">
+          <span class="state-orbit-bird">›</span>
+          <i></i><i></i><i></i>
         </div>
-        <div class="measuring-route" aria-hidden="true">
-          <span class="measuring-line"></span>
-          <span class="measuring-node node-one"></span>
-          <span class="measuring-node node-two"></span>
-          <span class="measuring-node node-three"></span>
-          <span class="measuring-bird">›</span>
-        </div>
+        <p class="state-label">経路観測中</p>
+        <h2 id="measuring-title">
+          あなたが選んだサイトまでの経路を、<br />一羽の鳥がたどっています。
+        </h2>
         <p class="state-copy">
-          選んだWebサイトの場所を確かめ、応答を待ちながら見える中継点を集めています。
-          完全な進捗率は分からないため、数字による進捗表示は行いません。
+          観測された中継地点は木として残り、見えない区間は霧になります。
         </p>
         <p id="elapsed-label" class="elapsed-label">観測開始から 0 秒</p>
       </section>
 
       <section
         id="result-panel"
-        class="experience-panel state-panel"
-        aria-labelledby="result-title"
+        class="experience-panel state-panel result-panel"
+        aria-labelledby="controller-title"
         hidden
       >
-        <div class="section-heading">
-          <p id="result-kicker" class="section-index">OBSERVATION COMPLETE</p>
-          <h2 id="result-title">見える道が届きました</h2>
-        </div>
-
-        <p id="result-message" class="state-copy"></p>
-
-        <dl id="result-summary" class="result-summary">
-          <div>
-            <dt>観測した地点</dt>
-            <dd id="observed-count">0</dd>
-          </div>
-          <div>
-            <dt>見えない区間</dt>
-            <dd id="unknown-count">0</dd>
-          </div>
-          <div>
-            <dt>行き先</dt>
-            <dd id="destination-host" class="destination-host">—</dd>
-          </div>
-        </dl>
-
-        <div class="route-map-wrap">
-          <p class="route-map-label">OBSERVED ROUTE</p>
-          <ol id="route-map" class="route-map" aria-label="匿名化された観測経路"></ol>
+        <div class="result-context" hidden>
+          <p id="result-kicker"></p>
+          <h2 id="result-title"></h2>
+          <p id="result-message"></p>
         </div>
 
         <section
           id="controller-panel"
           class="route-controller"
           aria-labelledby="controller-title"
+          data-phase="connecting"
           hidden
         >
           <header class="controller-heading">
-            <div>
-              <p class="controller-kicker">YOUR PAPER / WIND CONTROL</p>
-              <h3 id="controller-title">紙飛行機を風へ放つ</h3>
-              <p class="controller-identity">
-                <span
-                  id="controller-color-swatch"
-                  class="controller-color-swatch"
-                  aria-hidden="true"
-                ></span>
-                <span>この色が、あなたの紙飛行機です</span>
-              </p>
-            </div>
-            <p id="controller-connection" class="controller-connection">
+            <p class="controller-connection" id="controller-connection">
               <span aria-hidden="true"></span>
               <strong id="controller-connection-label">接続中</strong>
             </p>
+            <div>
+              <h2 id="controller-title">画面と接続しています</h2>
+              <p id="controller-state" class="controller-state" aria-live="polite">
+                そのまま少し待ってください。
+              </p>
+            </div>
+            <p class="controller-identity">
+              <span
+                id="controller-color-swatch"
+                class="controller-color-swatch"
+                aria-hidden="true"
+              ></span>
+              <span>この色があなたの鳥と紙飛行機です</span>
+            </p>
           </header>
-          <p id="controller-state" class="controller-state" aria-live="polite">
-            経路を観測しています
-          </p>
+
           <div class="controller-body">
             <div
               id="controller-pad"
@@ -228,43 +151,40 @@
             >
               <svg
                 class="controller-pad-face"
-                width="240"
-                height="240"
-                viewBox="0 0 240 240"
+                viewBox="0 0 300 300"
                 aria-hidden="true"
                 focusable="false"
               >
                 <circle
                   class="controller-pad-rim"
-                  cx="120"
-                  cy="120"
-                  r="116"
-                  fill="#12333b"
-                  fill-opacity="0.72"
-                  stroke="#d5a24b"
-                  stroke-opacity="0.78"
+                  cx="150"
+                  cy="150"
+                  r="145"
+                  fill="#0b2a31"
+                  fill-opacity="0.82"
                   stroke-width="2"
                 />
                 <circle
-                  cx="120"
-                  cy="120"
-                  r="73"
+                  cx="150"
+                  cy="150"
+                  r="96"
                   fill="none"
-                  stroke="#b8ded5"
-                  stroke-opacity="0.2"
-                  stroke-dasharray="4 7"
+                  stroke="#8fbbb5"
+                  stroke-opacity="0.18"
+                  stroke-dasharray="3 10"
                 />
                 <path
-                  d="M120 20V220M20 120H220"
+                  d="M150 26V274M26 150H274"
                   fill="none"
-                  stroke="#b8ded5"
-                  stroke-opacity="0.15"
+                  stroke="#8fbbb5"
+                  stroke-opacity="0.12"
                 />
               </svg>
               <span id="controller-knob" class="controller-knob" aria-hidden="true">
                 <i></i>
               </span>
             </div>
+
             <div class="controller-actions">
               <dl class="controller-vector" aria-label="操作入力">
                 <div><dt>X</dt><dd id="controller-x">0.00</dd></div>
@@ -286,44 +206,74 @@
                 自分の経路を光らせる
               </button>
               <p id="controller-help" class="controller-help">
-                円の中を指でなぞると、紙飛行機へ力が加わります。指を離すと風に戻ります。
+                円の中を指で動かしてください。指を離すと、紙飛行機は森の風に流されます。
               </p>
             </div>
           </div>
+
           <p id="controller-ended" class="controller-ended" hidden>
-            セッションが終了しました。もう一度参加すると、新しい紙飛行機が生まれます。
+            この紙飛行機の操作は終了しました。
           </p>
         </section>
 
+        <details class="route-details">
+          <summary>観測された経路を見る</summary>
+          <dl id="result-summary" class="result-summary">
+            <div>
+              <dt>木になった地点</dt>
+              <dd id="observed-count">0</dd>
+            </div>
+            <div>
+              <dt>霧になった区間</dt>
+              <dd id="unknown-count">0</dd>
+            </div>
+            <div>
+              <dt>行き先</dt>
+              <dd id="destination-host" class="destination-host">—</dd>
+            </div>
+          </dl>
+          <ol id="route-map" class="route-map" aria-label="匿名化された観測経路"></ol>
+        </details>
+
         <button id="return-button" class="secondary-action" type="button">
-          説明へ戻る
+          新しい経路をたどる
         </button>
       </section>
 
       <section
         id="error-panel"
-        class="experience-panel state-panel"
+        class="experience-panel state-panel error-panel"
         aria-labelledby="error-title"
         hidden
       >
-        <div class="section-heading">
-          <p id="error-kicker" class="section-index">OBSERVATION PAUSED</p>
-          <h2 id="error-title">今回は観測できませんでした</h2>
-        </div>
-        <div class="error-symbol" aria-hidden="true">
-          <span></span>
-        </div>
+        <p id="error-kicker" class="state-label">接続状態</p>
+        <h2 id="error-title">観測を開始できませんでした</h2>
         <p id="error-message" class="state-copy"></p>
         <p id="error-guidance" class="guidance"></p>
         <button id="error-return-button" class="secondary-action" type="button">
-          説明へ戻る
+          行き先の入力へ戻る
         </button>
       </section>
 
-      <footer class="site-footer">
-        <p>通信は続いていても、すべてを観測できるとは限りません。</p>
-        <p class="footer-meta">ROUTE FOREST / TECHNICAL STUDY</p>
-      </footer>
+      <details id="about-work" class="about-work">
+        <summary>作品について</summary>
+        <div class="about-content">
+          <p>
+            この作品は、見えない通信の経路を鳥、木、霧、紙飛行機、風に置き換えて表しています。
+          </p>
+          <dl>
+            <div><dt>鳥</dt><dd>情報を運びながら通信の経路を進みます。</dd></div>
+            <div><dt>木</dt><dd>応答して、観測できたルーターです。</dd></div>
+            <div><dt>種</dt><dd>その経路を通った記憶として木を育てます。</dd></div>
+            <div><dt>霧</dt><dd>通信は続いていても、こちらから観測できなかった区間です。</dd></div>
+            <div><dt>紙飛行機</dt><dd>届いた情報が、あなたの扱える形になったものです。</dd></div>
+            <div><dt>風</dt><dd>森の中を流れ続ける情報です。</dd></div>
+          </dl>
+          <p>
+            紙飛行機は、あなたの指の操作と、木の周囲を流れる情報の風の両方から影響を受けます。
+          </p>
+        </div>
+      </details>
     </main>
 
     <noscript>
@@ -331,6 +281,6 @@
         この体験にはJavaScriptが必要です。ブラウザの設定を確認してください。
       </p>
     </noscript>
-    <script type="module" src="/app.js?v=5"></script>
+    <script type="module" src="/app.js?v=6"></script>
   </body>
 </html>

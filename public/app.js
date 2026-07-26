@@ -35,6 +35,7 @@ const controllerConnection = document.querySelector("#controller-connection");
 const controllerConnectionLabel = document.querySelector(
   "#controller-connection-label",
 );
+const controllerTitle = document.querySelector("#controller-title");
 const controllerState = document.querySelector("#controller-state");
 const controllerPad = document.querySelector("#controller-pad");
 const controllerKnob = document.querySelector("#controller-knob");
@@ -50,6 +51,9 @@ const controllerColorSwatch = document.querySelector(
 const routeHighlightButton = document.querySelector(
   "#route-highlight-button",
 );
+const aboutWork = document.querySelector("#about-work");
+const uiPreviewToolbar = document.querySelector("#ui-preview-toolbar");
+const uiPreviewState = document.querySelector("#ui-preview-state");
 
 let elapsedTimer = null;
 let controllerCredentials = null;
@@ -150,7 +154,12 @@ function setControllerConnection(mode, label) {
 function ensureControllerPadGeometry() {
   const viewportWidth =
     document.documentElement.clientWidth || window.innerWidth || 320;
-  const size = Math.max(190, Math.min(248, viewportWidth - 76));
+  const viewportHeight =
+    document.documentElement.clientHeight || window.innerHeight || 640;
+  const size = Math.max(
+    196,
+    Math.min(300, viewportWidth - 52, viewportHeight * 0.48),
+  );
   controllerPad.style.width = `${size}px`;
   controllerPad.style.height = `${size}px`;
 }
@@ -243,24 +252,62 @@ function releaseControllerPointer(pointerId) {
   clearInterval(controllerInputTimer);
   controllerInputTimer = null;
   setControllerVector({ x: 0, y: 0 }, { send: true, force: true });
+  if (
+    !controllerCredentials &&
+    document.body.classList.contains("is-ui-preview")
+  ) {
+    controllerInputStatus.className = "controller-input-status";
+    controllerInputStatus.textContent = "円を押したまま動かしてください";
+  }
 }
 
 const CONTROLLER_PHASE_COPY = Object.freeze({
-  connecting: "接続中",
-  measuring: "経路を観測中",
-  carrying: "鳥が情報を運んでいます",
-  opening: "手紙を開いています",
-  preparing: "紙飛行機を準備しています",
-  controllable: "操作できます",
-  ended: "セッションが終了しました",
+  connecting: Object.freeze({
+    title: "画面と接続しています",
+    description: "そのまま少し待ってください。",
+  }),
+  measuring: Object.freeze({
+    title: "経路を観測しています",
+    description:
+      "あなたが選んだサイトまでの経路を、一羽の鳥がたどっています。",
+  }),
+  carrying: Object.freeze({
+    title: "鳥が通信の経路を進んでいます",
+    description:
+      "観測された地点には木が生まれ、以前通った木は少しずつ育ちます。",
+  }),
+  opening: Object.freeze({
+    title: "届いた情報を開いています",
+    description: "届いた情報が、あなたの紙飛行機へ変わります。",
+  }),
+  preparing: Object.freeze({
+    title: "紙飛行機を準備しています",
+    description: "折り上がるまで、あと少しです。",
+  }),
+  controllable: Object.freeze({
+    title: "あなたの紙飛行機",
+    description:
+      "指で動かしてください。\n紙飛行機は、あなたの操作と森を流れる情報の風の両方から影響を受けます。",
+  }),
+  reconnecting: Object.freeze({
+    title: "接続を確かめています",
+    description: "操作を止めて、画面との再接続を待っています。",
+  }),
+  ended: Object.freeze({
+    title: "セッションが終了しました",
+    description: "この紙飛行機は操作できなくなりました。",
+  }),
 });
 
 function applyControllerStatus(status) {
   const phase = status?.phase || "connecting";
+  const copy =
+    CONTROLLER_PHASE_COPY[phase] || CONTROLLER_PHASE_COPY.connecting;
   controllerCanControl = status?.controllable === true;
   controllerRouteReady = status?.routeReady === true;
-  controllerState.textContent =
-    CONTROLLER_PHASE_COPY[phase] || CONTROLLER_PHASE_COPY.connecting;
+  controllerPanel.dataset.phase = phase;
+  controllerTitle.textContent = status?.title || copy.title;
+  controllerState.textContent = status?.description || copy.description;
   controllerPad.setAttribute(
     "aria-disabled",
     String(!controllerCanControl),
@@ -270,6 +317,8 @@ function applyControllerStatus(status) {
     controllerInputStatus.textContent =
       phase === "ended"
         ? "操作セッションが終了しました"
+        : phase === "reconnecting"
+          ? "再接続を待っています"
         : "紙飛行機の準備を待っています";
   } else if (controllerPointer === null) {
     controllerInputStatus.className = "controller-input-status";
@@ -281,8 +330,15 @@ function applyControllerStatus(status) {
   if (phase === "ended") {
     setControllerConnection("is-ended", "終了");
     setControllerVector({ x: 0, y: 0 });
+  } else if (phase === "reconnecting") {
+    setControllerConnection("is-reconnecting", "再接続中");
+  } else if (phase === "connecting") {
+    setControllerConnection("", "接続中");
   } else {
     setControllerConnection("is-live", "接続済み");
+  }
+  if (phase === "controllable") {
+    requestAnimationFrame(ensureControllerPadGeometry);
   }
 }
 
@@ -304,8 +360,18 @@ async function updateControllerStatus() {
     }
     applyControllerStatus(await readResponse(response));
   } catch {
+    controllerCanControl = false;
+    controllerRouteReady = false;
+    controllerPanel.dataset.phase = "reconnecting";
+    controllerPad.setAttribute("aria-disabled", "true");
+    routeHighlightButton.disabled = true;
     setControllerConnection("is-reconnecting", "再接続中");
-    controllerState.textContent = "接続を確かめています";
+    controllerTitle.textContent = CONTROLLER_PHASE_COPY.reconnecting.title;
+    controllerState.textContent =
+      CONTROLLER_PHASE_COPY.reconnecting.description;
+    controllerInputStatus.className =
+      "controller-input-status is-error";
+    controllerInputStatus.textContent = "再接続を待っています";
   }
 }
 
@@ -811,5 +877,117 @@ async function restoreControllerSession() {
   }
 }
 
-restoreControllerSession();
-ensureControllerPadGeometry();
+const UI_PREVIEW_STATES = new Set([
+  "measuring",
+  "carrying",
+  "fog",
+  "opening",
+  "controllable",
+  "reconnecting",
+  "ended",
+  "about",
+]);
+
+function populatePreviewRoute() {
+  observedCount.textContent = "3";
+  unknownCount.textContent = "2";
+  destinationHost.textContent = "example.com";
+  routeMap.replaceChildren(
+    routeStepNode({
+      kind: "observed-node",
+      hop: 1,
+      nodes: [{ nodeId: "preview-a", treeVisitCount: 1 }],
+    }),
+    routeStepNode({
+      kind: "unknown-segment",
+      startHop: 2,
+      endHop: 3,
+      hopCount: 2,
+    }),
+    routeStepNode({
+      kind: "observed-node",
+      hop: 4,
+      nodes: [{ nodeId: "preview-b", treeVisitCount: 7 }],
+    }),
+    routeStepNode({
+      kind: "observed-node",
+      hop: 5,
+      nodes: [{ nodeId: "preview-c", treeVisitCount: 3 }],
+    }),
+  );
+}
+
+function applyUiPreview(state) {
+  const previewState = UI_PREVIEW_STATES.has(state) ? state : "measuring";
+  uiPreviewState.value = previewState;
+  aboutWork.open = previewState === "about";
+  controllerPanel.style.setProperty("--participant-color", "#d5a24b");
+  controllerPanel.hidden = false;
+  populatePreviewRoute();
+
+  if (previewState === "measuring") {
+    setPanel("measuring");
+    return;
+  }
+  if (previewState === "about") {
+    setPanel("intro");
+    aboutWork.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  setPanel("result");
+  const statusByPreview = {
+    carrying: {
+      phase: "carrying",
+      controllable: false,
+      routeReady: true,
+    },
+    fog: {
+      phase: "carrying",
+      controllable: false,
+      routeReady: true,
+      title: "観測できない区間を通っています",
+      description:
+        "通信は続いていますが、この区間は見えません。鳥は霧の中を進んでいます。",
+    },
+    opening: {
+      phase: "opening",
+      controllable: false,
+      routeReady: true,
+    },
+    controllable: {
+      phase: "controllable",
+      controllable: true,
+      routeReady: true,
+    },
+    reconnecting: {
+      phase: "reconnecting",
+      controllable: false,
+      routeReady: false,
+    },
+    ended: {
+      phase: "ended",
+      controllable: false,
+      routeReady: false,
+    },
+  };
+  applyControllerStatus(statusByPreview[previewState]);
+}
+
+const requestedPreview = new URLSearchParams(window.location.search).get(
+  "ui-preview",
+);
+if (UI_PREVIEW_STATES.has(requestedPreview)) {
+  document.body.classList.add("is-ui-preview");
+  uiPreviewToolbar.hidden = false;
+  uiPreviewState.addEventListener("change", () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("ui-preview", uiPreviewState.value);
+    history.replaceState(null, "", url);
+    applyUiPreview(uiPreviewState.value);
+  });
+  applyUiPreview(requestedPreview);
+} else {
+  restoreControllerSession();
+  ensureControllerPadGeometry();
+}

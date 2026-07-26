@@ -14,23 +14,43 @@ test("connects the mobile controller and display through owned server events", a
 
   assert.match(page, /id="controller-pad"/);
   assert.match(page, /class="controller-pad-face"/);
-  assert.match(page, /styles\.css\?v=5/);
-  assert.match(page, /app\.js\?v=5/);
+  assert.match(page, /styles\.css\?v=6/);
+  assert.match(page, /app\.js\?v=6/);
   assert.match(page, /id="controller-color-swatch"/);
   assert.match(page, /id="route-highlight-button"/);
+  assert.match(page, /id="ui-preview-state"/);
+  assert.match(page, /作品について/);
+  assert.match(page, /自分の経路を光らせる/);
+  assert.match(app, /あなたの紙飛行機/);
+  assert.doesNotMatch(page, /ROUTE OBSERVATION|TECHNICAL STUDY|wordmark-mark/);
+  for (const previewState of [
+    "measuring",
+    "carrying",
+    "fog",
+    "opening",
+    "controllable",
+    "reconnecting",
+    "ended",
+    "about",
+  ]) {
+    assert.match(page, new RegExp(`value="${previewState}"`));
+  }
   assert.match(app, /authorization: `Bearer/);
   assert.match(app, /--participant-color/);
   assert.match(app, /ensureControllerPadGeometry/);
+  assert.match(app, /UI_PREVIEW_STATES/);
+  assert.match(app, /applyUiPreview/);
   assert.match(app, /setInterval\(\(\) => \{\s*sendControllerInput/);
   assert.match(app, /"touchstart"/);
   assert.match(app, /"touchmove"/);
   assert.match(app, /controller-input-status is-sending/);
   assert.match(app, /beginControllerPointer\("tap"/);
-  assert.match(styles, /\.controller-pad\s*\{[^}]*height:\s*248px/s);
+  assert.match(styles, /\.controller-pad\s*\{[^}]*max-width:\s*300px/s);
   assert.match(
     styles,
-    /@media \(max-width: 560px\)[\s\S]*?\.controller-pad\s*\{[^}]*height:\s*calc\(100vw - 76px\)/,
+    /\.route-controller:not\(\[data-phase="controllable"\]\) \.controller-pad\s*\{[^}]*display:\s*none/s,
   );
+  assert.match(styles, /\.controller-vector\s*\{[^}]*display:\s*none/s);
   assert.match(display, /source\.addEventListener\("plane-control"/);
   assert.match(display, /source\.addEventListener\("route-highlight"/);
   assert.match(display, /routeHighlightSegments\(highlight\.points, plane\)/);
