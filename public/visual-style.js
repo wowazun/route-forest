@@ -58,8 +58,8 @@ export const visualStyle = deepFreeze({
       timeScale: 1,
       maximum: 1,
       baseInfluence: 0,
-      treeInfluence: 0.34,
-      treeRadius: 92,
+      treeInfluence: 0.52,
+      treeRadius: 260,
     },
   },
   density: {

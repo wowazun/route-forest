@@ -86,6 +86,18 @@ test("keeps production paper-plane heading highly responsive", () => {
   assert.ok(visualStyle.physics.plane.headingResponse >= 30);
 });
 
+test("lets one mature route tree move the field well beyond its canopy", () => {
+  const field = createWindField(visualStyle.physics.wind);
+  const trees = createTreeWindIndex({
+    trees: [{ x: 300, y: 200, size: 58, seed: "route-tree" }],
+  });
+  const wind = field.sample(520, 200, 4, trees);
+
+  assert.equal(visualStyle.physics.wind.baseInfluence, 0);
+  assert.ok(visualStyle.physics.wind.treeRadius >= 240);
+  assert.ok(Math.hypot(wind.x, wind.y) > 0);
+});
+
 test("keeps the sampled field approximately divergence free", () => {
   const field = createCurlNoise({ seed: 92 });
   const epsilon = 0.5;
